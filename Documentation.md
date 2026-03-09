@@ -85,18 +85,30 @@ This project is designed to manage:
 
 
 ### 1.5 Non-Functional Requirements
-#### Peformance
+#### 1.5.1 Peformance
  For the program to be effective in it's performance, it needs to streamline elements of the design stage, such as opening applications, and importing files, faster than the standard workflow, while also implimenting the management tools, and iterative storage of designs.
 
-#### Usability
+#### 1.5.2 Usability
  The program needs to be highly usable, with basic functionality being immediately avaliable from the home screen, while also offering more options as a unique application. An example of these elements would be recent projects, creation of new projects. Drag and Drop Functionality, and easy intergration with external applications, such as ensuring data and information can be easily read, and exported through standard applications such as file browsers.
 
-#### Security
- With a heavy reliance on external entities such as API's from 3D printers, and unique design files, security is a key requirement to ensuring the security of the program. An example for how to achieve this is having a default limit to the files that can be accepted by the system, with allowing more advanced 
+#### 1.5.3 Security
+ With a heavy reliance on external entities such as API's from 3D printers, and unique design files, security is a key requirement to ensuring the security of the program. An example for how to achieve this is having a default limit to the files that can be accepted by the system, with allowing more advanced users to more finely adjust their file type parameters to best suit their workflow.
+
+#### 1.5.4 Reliability
+ This program is designed to intergrate seamlessly into a users workflow, se ensuring that the system is reliable is a critical element for the success of this program. However, this reliability will stem into a range of areas, including intergration with non-reliable systems, such as CAD and slicer workflows. This means the program will need to handle edgecases and unstable systems effectively. Another part of improving the reliability is it will need to be a highly efficient system, as too improve the amount of system recources avaliable to more intense applications. 
 
 ### 1.6 Constraints
+#### 1.6.1 Time
+ The time frame for this project is limiting, so to work with a timeframe and have a more adaptable 'completed system' I will impliment a Object Oriented and Declaritive programming paradigms, to have a more isolated range of features connected through a main UI.
+
+#### 1.6.2 Technical Knowledge
+ This project is designed to be smaller, but highly technical with the intergration of a range of systems and infustructure, as well as utilizing more unique tools and programs, this will mean losts of my time will be spent researching and testing more technical solutions to problems, rather than the process of actually making them. Furthering this, the use of more general, proven functions and external processes, such as JS canvas, etc, will further improve the reliability of the system.
+
+#### 1.6.3 Hardware / Software Access
+ A key part of the systems usecase will be intergration with hardware, specifically 3D printers. This will require areas of my development process to be done with this technology I have at home. To ensure this stage of the development is completed as soon as possible, it will be part of the earlier stages of the design process I complete.
 
 ### 1.7 Requirements Analysis and Prioritisation
+ 
 
 ***
 
