@@ -10,6 +10,12 @@ Course: Software Engineering Stage 6
 GitHub URL: https://github.com/Mitles1234/3D_Design_-_Printer_Project_Manager
 ***
 
+# Notes for Later Miles
+Orcaslicer CLI Commands - https://github.com/OrcaSlicer/OrcaSlicer/discussions/8593
+Apache JMeter - Stress Testing
+Corrupt stl - Just  go in and delete a bunch of stuff
+Pywebview - Viewing Printer API's
+
 ## Table of Content
 - [1. Identifying & Defining](#1-identifying--defining)
   - [1.1 Problem Statement](#11-problem-statement)
@@ -105,7 +111,7 @@ This project is designed to manage:
  This project is designed to be smaller, but highly technical with the intergration of a range of systems and infustructure, as well as utilizing more unique tools and programs, this will mean losts of my time will be spent researching and testing more technical solutions to problems, rather than the process of actually making them. Furthering this, the use of more general, proven functions and external processes, such as JS canvas, etc, will further improve the reliability of the system.
 
 #### 1.6.3 Hardware / Software Access
- A key part of the systems usecase will be intergration with hardware, specifically 3D printers. This will require areas of my development process to be done with this technology I have at home. To ensure this stage of the development is completed as soon as possible, it will be part of the earlier stages of the design process I complete.
+ A key part of the systems usecase will be intergration with hardware, specifically 3D printers. This will require areas of my development process to be done with this technology I have at home. To ensure this stage of the development is completed as soon as possible, it will be part of the earlier stages of the design process I complete. Furthermore, the End User will need their Hardware to be connected to the internet via a local lan for the project to work at full capacity.
 
 ### 1.7 Requirements Analysis and Prioritisation
  
