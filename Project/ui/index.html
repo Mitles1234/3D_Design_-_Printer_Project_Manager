@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+  <button onclick="callPython()">Click Me</button>
+  <p id="result"></p>
+
+  <script>
+    async function callPython() {
+      // Call the Python function — always returns a Promise
+      const result = await window.pywebview.api.say_hello("Miles")
+      document.getElementById("result").innerHTML = result
+    }
+  </script>
+
+</body>
+</html>
