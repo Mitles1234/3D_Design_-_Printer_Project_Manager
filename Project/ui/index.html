@@ -9,21 +9,21 @@
 <body>
 
     <header>
-        Top
+        <a onclick="navigate('home.html')">Home</a>
+        <a onclick="navigate('projects.html')">Projects</a>
+        <a onclick="navigate('equipment.html')">Equipment</a>
     </header>
 
     <div class="body">
 
         <aside class="sidebar">
-            Side
-
+            <a onclick="navigate('http://192.168.0.170:4409')">Ender_3</a>
             <div class="sidebar-spacer"></div>
-
             Settings Button
         </aside>
 
         <main>
-              <iframe src="http://192.168.0.170:4409"></iframe>
+              <iframe id="content" src="home.html"></iframe>
         </main>
 
     </div>

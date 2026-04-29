@@ -285,6 +285,8 @@ Finally, as each iteration is completed, the resulting work will be reviewed and
 ### 3.7 Storyboards
 ![Context Diagram](./assets/Home_UI.png)
 ***
+## Development Decisions
+Page Switching will be handled by rotating an iframe, as that will ahev better intergration with Printer Web API URLS for a more seamless experience
 
 ## 4. Producing and Implementing
 
