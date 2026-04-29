@@ -1,0 +1,45 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background: teal; /* placeholder colour */
+    height: 60px;
+}
+
+.body {
+    display: flex;
+    flex: 1; /* fills remaining height below header */
+}
+
+.sidebar {
+    width: 80px;
+    background: lightgray; /* placeholder colour */
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-spacer {
+    flex: 1; /* pushes anything below it to the bottom */
+}
+
+main {
+    flex: 1; /* fills remaining width beside sidebar */
+    background: white;
+    overflow: hidden;
+}
+
+iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
