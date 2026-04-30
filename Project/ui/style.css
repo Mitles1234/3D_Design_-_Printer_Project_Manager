@@ -1,3 +1,30 @@
+header {
+    position: relative;
+}
+
+header a {
+    position: relative;
+    z-index: 1;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 32px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+}
+
+.nav-pill {
+    position: absolute;
+    background: rgba(255,255,255,0.2);
+    border-radius: 999px;
+    transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    height: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 0;
+}
 * {
     box-sizing: border-box;
     margin: 0;
@@ -9,35 +36,58 @@ body {
     display: flex;
     flex-direction: column;
 }
+@font-face {
+    font-family: 'Inter';
+    src: url('../Project/Assets/fonts/Inter-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Inter';
+    src: url('../Project/Assets/fonts/Inter-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+body {
+    font-family: 'Inter', Arial, sans-serif;
+}
 
 header {
-    background: teal; /* placeholder colour */
-    height: 60px;
+    background: rgb(0, 149, 187); /* placeholder colour */
+    height: 76px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 24px;
+    gap: 56px;
     padding: 0 32px;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: white;
 }
 
 .body {
     display: flex;
-    flex: 1; /* fills remaining height below header */
+    flex: 1;
 }
 
 .sidebar {
     width: 80px;
-    background: lightgray; /* placeholder colour */
+    background: lightgray;
     display: flex;
     flex-direction: column;
+    align-items: center;
 }
 
 .sidebar-spacer {
-    flex: 1; /* pushes anything below it to the bottom */
+    flex-grow: 1;
+    min-height: 0;
 }
 
 main {
-    flex: 1; /* fills remaining width beside sidebar */
+    flex: 1;
     background: white;
     overflow: hidden;
 }
@@ -47,4 +97,12 @@ iframe {
     width: 100%;
     height: 100%;
     border: none;
+}
+
+.settings-icon {
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.settings-icon:hover {
+    transform: rotate(90deg);
 }
