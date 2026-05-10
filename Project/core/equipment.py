@@ -21,10 +21,36 @@ def add_printer(name, IP_address=None, frontend_port=None, backend_port=7125):
         "IP_address": IP_address,
         "frontend_port": frontend_port,
         "backend_port": backend_port,
+        "filament_ids": [],
     })
 
     with printers_path.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=4)
+
+    return printer_id
+
+
+def add_filament(name, material=None, color="black", diameter=1.75):
+    filaments_path = Path(__file__).resolve().parent / "data" / "filaments.json"
+    try:
+        with filaments_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+
+    filament_id = unique_id("filament")
+    data.append({
+        "filament_id": filament_id,
+        "name": name,
+        "material": material,
+        "color": color,
+        "diameter": diameter,
+    })
+
+    with filaments_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+
+    return filament_id
 
 def remove_printer(printer_id):
     printers_path = Path(__file__).resolve().parent / "data" / "printers.json"
@@ -35,6 +61,39 @@ def remove_printer(printer_id):
         data = []
 
     data = [item for item in data if item.get("printer_id") != printer_id]
+
+    with printers_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+
+
+def remove_filament(filament_id):
+    filaments_path = Path(__file__).resolve().parent / "data" / "filaments.json"
+    try:
+        with filaments_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+
+    data = [item for item in data if item.get("filament_id") != filament_id]
+
+    with filaments_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+
+
+def add_filament_to_printer(printer_id, filament_id):
+    printers_path = Path(__file__).resolve().parent / "data" / "printers.json"
+    try:
+        with printers_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+
+    for printer in data:
+        if printer.get("printer_id") == printer_id:
+            filament_ids = printer.setdefault("filament_ids", [])
+            if filament_id not in filament_ids:
+                filament_ids.append(filament_id)
+            break
 
     with printers_path.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=4)
