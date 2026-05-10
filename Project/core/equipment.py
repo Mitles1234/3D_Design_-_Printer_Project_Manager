@@ -1,0 +1,67 @@
+import json
+from urllib.error import URLError
+from urllib.request import urlopen
+from pathlib import Path
+
+from general import *
+
+
+def add_printer(name, IP_address=None, frontend_port=None, backend_port=7125):
+    printers_path = Path(__file__).resolve().parent / "data" / "printers.json"
+    try:
+        with printers_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+
+    printer_id = unique_id("printer")
+    data.append({
+        "printer_id": printer_id,
+        "name": name,
+        "IP_address": IP_address,
+        "frontend_port": frontend_port,
+        "backend_port": backend_port,
+    })
+
+    with printers_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+
+def remove_printer(printer_id):
+    printers_path = Path(__file__).resolve().parent / "data" / "printers.json"
+    try:
+        with printers_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+
+    data = [item for item in data if item.get("printer_id") != printer_id]
+
+    with printers_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+
+
+def printer_status(IP_address, backend_port=7125):
+    if not IP_address:
+        return "grey", "Disconnected"
+
+    base_url = f"http://{IP_address}:{backend_port}"
+    url = f"{base_url}/printer/objects/query?print_stats&virtual_sdcard"
+
+    try:
+        with urlopen(url, timeout=2) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return "red", "Offline"
+
+    status = payload.get("result", {}).get("status", {})
+    print_stats = status.get("print_stats", {})
+    sdcard = status.get("virtual_sdcard", {})
+
+    if print_stats.get("state") == "printing":
+        progress = sdcard.get("progress")
+        if isinstance(progress, (int, float)):
+            percent = int(round(progress * 100))
+            return "orange", f"{percent}%"
+        return "orange", "Printing"
+
+    return "green", "online"
