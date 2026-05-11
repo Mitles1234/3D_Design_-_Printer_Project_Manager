@@ -29,8 +29,7 @@ def add_printer(name, IP_address=None, frontend_port=None, backend_port=7125):
 
     return printer_id
 
-
-def add_filament(name, material=None, color="black", diameter=1.75):
+def add_filament(manufacturer, material=None, colour="black", diameter=1.75):
     filaments_path = Path(__file__).resolve().parent / "data" / "filaments.json"
     try:
         with filaments_path.open("r", encoding="utf-8") as handle:
@@ -41,9 +40,9 @@ def add_filament(name, material=None, color="black", diameter=1.75):
     filament_id = unique_id("filament")
     data.append({
         "filament_id": filament_id,
-        "name": name,
+        "manufacturer": manufacturer,
         "material": material,
-        "color": color,
+        "colour": colour,
         "diameter": diameter,
     })
 
@@ -65,7 +64,6 @@ def remove_printer(printer_id):
     with printers_path.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=4)
 
-
 def remove_filament(filament_id):
     filaments_path = Path(__file__).resolve().parent / "data" / "filaments.json"
     try:
@@ -78,7 +76,6 @@ def remove_filament(filament_id):
 
     with filaments_path.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=4)
-
 
 def add_filament_to_printer(printer_id, filament_id):
     printers_path = Path(__file__).resolve().parent / "data" / "printers.json"
@@ -97,7 +94,6 @@ def add_filament_to_printer(printer_id, filament_id):
 
     with printers_path.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=4)
-
 
 def printer_status(IP_address, backend_port=7125):
     if not IP_address:

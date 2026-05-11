@@ -31,12 +31,7 @@ def _touch_file(path):
         pass
 
 
-# --- Projects ---
-def add_project(name):
-    return create_project(name)
-
-
-def create_project(name):
+def _create_project(name):
     project_id = unique_id("project")
     creation_date = datetime.now().isoformat(timespec="seconds")
 
@@ -61,6 +56,12 @@ def create_project(name):
     _touch_file(project_md)
 
     return project_data
+
+
+
+# --- Projects ---
+def add_project(name):
+    return _create_project(name)
 
 
 def update_project(name, new_name=None, **updates):

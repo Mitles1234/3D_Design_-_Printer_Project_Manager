@@ -13,7 +13,7 @@ function navigate(url, el) {
         return;
     }
 
-    fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(3000) })
+    fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(1) })
         .then(() => document.getElementById('content').src = url)
         .catch(() => document.getElementById('content').src = 'error.html');
 }
@@ -23,3 +23,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const firstLink = document.querySelector('header a');
     if (firstLink) firstLink.click();
 });
+
+
+// --- Python Backend ---
