@@ -3,7 +3,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 from pathlib import Path
 
-from general import *
+from .general import *
 
 
 def add_printer(name, IP_address=None, frontend_port=None, backend_port=7125):

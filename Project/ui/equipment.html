@@ -1,15 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Filaments</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div class="content-wrapper">
-      <h1>Filaments</h1>
-      <p>Filament management content goes here.</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print Farm Manager</title>
+  <link rel="stylesheet" href="equipment.css">
+</head>
+<body>
+
+  <div id="drag-ghost">
+    <div class="chip-dot" id="ghost-dot"></div>
+    <span id="ghost-name"></span>
+  </div>
+
+  <div class="modal-backdrop" id="filament-modal">
+    <div class="modal">
+      <div class="modal-title">ADD FILAMENT</div>
+      <div class="form-group">
+        <label class="form-label">Name / Brand</label>
+        <input type="text" class="form-input" id="f-name" placeholder="e.g. Bambu PLA Basic - Blue">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Material</label>
+        <select class="form-select" id="f-material">
+          <option value="PLA">PLA</option>
+          <option value="PETG">PETG</option>
+          <option value="ABS">ABS</option>
+          <option value="ASA">ASA</option>
+          <option value="TPU">TPU</option>
+          <option value="PA">PA (Nylon)</option>
+          <option value="PC">PC</option>
+          <option value="PLA-CF">PLA-CF</option>
+          <option value="PETG-CF">PETG-CF</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remaining weight (g)</label>
+        <input type="number" class="form-input" id="f-weight" placeholder="1000" min="1" max="5000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <div class="color-grid" id="color-grid"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" type="button" onclick="closeFilamentModal()">Cancel</button>
+        <button class="btn-confirm" type="button" onclick="confirmAddFilament()">Add Spool</button>
+      </div>
     </div>
-  </body>
+  </div>
+
+  <div class="layout">
+    <header>
+      <div class="header-stats">
+        <span>PRINTERS <strong id="stat-printers">0</strong></span>
+        <span>SPOOLS <strong id="stat-spools">0</strong></span>
+        <span>ATTACHED <strong id="stat-attached">0</strong></span>
+        <span>AVAILABLE <strong id="stat-avail">0</strong></span>
+      </div>
+      <div class="header-actions">
+        <div class="header-message" id="header-message"></div>
+        <button class="action-btn" type="button" onclick="openPrinterModal()">Add Printer</button>
+      </div>
+    </header>
+    <div class="main">
+      <div class="printers-panel">
+        <div class="panel-heading">print farm</div>
+        <div class="printers-grid" id="printers-grid"></div>
+      </div>
+      <div class="filaments-panel">
+        <div class="filaments-panel-header">
+          <div class="panel-heading" style="margin-bottom:0;">filament inventory</div>
+          <div class="search-wrapper">
+            <div class="search-icon">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <input type="text" class="search-box" id="search-input" placeholder="Search spools..." oninput="renderFilaments()">
+          </div>
+          <div class="filter-row" id="filter-row">
+            <button class="filter-pill active" data-mat="ALL" onclick="setFilter(this,'ALL')">ALL</button>
+            <button class="filter-pill" data-mat="PLA" onclick="setFilter(this,'PLA')">PLA</button>
+            <button class="filter-pill" data-mat="PETG" onclick="setFilter(this,'PETG')">PETG</button>
+            <button class="filter-pill" data-mat="ABS" onclick="setFilter(this,'ABS')">ABS</button>
+            <button class="filter-pill" data-mat="TPU" onclick="setFilter(this,'TPU')">TPU</button>
+          </div>
+        </div>
+        <div class="pool-zone" id="pool-zone"
+          ondragover="onPoolDragOver(event)"
+          ondragleave="onPoolDragLeave(event)"
+          ondrop="onPoolDrop(event)">
+        </div>
+        <div class="panel-footer">
+          <button class="add-filament-btn" onclick="openFilamentModal()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Filament Spool
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="printer-modal">
+    <div class="modal">
+      <div class="modal-title" id="printer-modal-title">ADD PRINTER</div>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-input" id="p-name" placeholder="e.g. Bambu Farm 01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Model</label>
+        <input type="text" class="form-input" id="p-model" placeholder="e.g. Bambu X1 Carbon">
+      </div>
+      <div class="form-group">
+        <label class="form-label">IP Address</label>
+        <input type="text" class="form-input" id="p-ip" placeholder="192.168.0.10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Frontend Port</label>
+        <input type="number" class="form-input" id="p-frontend" placeholder="4409" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Backend Port</label>
+        <input type="number" class="form-input" id="p-backend" placeholder="7125" min="0">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" type="button" onclick="closePrinterModal()">Cancel</button>
+        <button class="btn-danger" type="button" id="printer-remove" onclick="removePrinterFromModal()">Remove</button>
+        <button class="btn-confirm" type="button" id="printer-confirm" onclick="confirmPrinterModal()">Add Printer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="equipment.js"></script>
+</body>
 </html>

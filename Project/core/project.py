@@ -2,7 +2,8 @@ import json
 import os
 import shutil
 from datetime import datetime
-from general import *
+from .general import *
+
 
 
 def _projects_index_path(base_dir):
