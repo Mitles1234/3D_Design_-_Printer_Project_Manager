@@ -1,6 +1,8 @@
 #--- Imports ---
+import json
 import os
 import sys
+from pathlib import Path
 import webview
 
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,6 +16,113 @@ except ModuleNotFoundError:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from core import equipment, project
+
+
+def _data_path(filename):
+    return Path(__file__).resolve().parent / "core" / "data" / filename
+
+
+def _load_list(path):
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def _write_list(path, data):
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+
+
+def _fallback_list_printers(include_status=False):
+    data = _load_list(_data_path("printers.json"))
+    if include_status:
+        for printer in data:
+            backend_port = printer.get("backend_port")
+            if not isinstance(backend_port, int):
+                try:
+                    backend_port = int(backend_port)
+                except (TypeError, ValueError):
+                    backend_port = 7125
+            frontend_port = printer.get("frontend_port")
+            if callable(getattr(equipment, "printer_status", None)):
+                try:
+                    try:
+                        color, label = equipment.printer_status(
+                            printer.get("IP_address"),
+                            backend_port,
+                            frontend_port,
+                        )
+                    except TypeError:
+                        color, label = equipment.printer_status(
+                            printer.get("IP_address"),
+                            backend_port,
+                        )
+                except Exception:
+                    color, label = "red", "Offline"
+            else:
+                color, label = "red", "Offline"
+            printer["status_color"] = color
+            printer["status_label"] = label
+            if color == "orange":
+                printer["status"] = "printing"
+            elif color == "green":
+                printer["status"] = "idle"
+            else:
+                printer["status"] = "offline"
+    return data
+
+
+def _fallback_list_filaments():
+    data = _load_list(_data_path("filaments.json"))
+    for filament in data:
+        if "name" not in filament and "manufacturer" in filament:
+            filament["name"] = filament.get("manufacturer")
+        if "color" not in filament and "colour" in filament:
+            filament["color"] = filament.get("colour")
+        if "weight" not in filament:
+            filament["weight"] = None
+        if "material" not in filament:
+            filament["material"] = None
+    return data
+
+
+def _fallback_update_printer(printer_id, **updates):
+    path = _data_path("printers.json")
+    data = _load_list(path)
+    updated = None
+    for printer in data:
+        if printer.get("printer_id") == printer_id:
+            printer.update({k: v for k, v in updates.items() if v is not None})
+            updated = printer
+            break
+    _write_list(path, data)
+    return updated
+
+
+def _fallback_update_filament(filament_id, **updates):
+    path = _data_path("filaments.json")
+    data = _load_list(path)
+    updated = None
+    for filament in data:
+        if filament.get("filament_id") == filament_id:
+            filament.update({k: v for k, v in updates.items() if v is not None})
+            updated = filament
+            break
+    _write_list(path, data)
+    return updated
+
+
+def _fallback_remove_filament_from_printer(printer_id, filament_id):
+    path = _data_path("printers.json")
+    data = _load_list(path)
+    for printer in data:
+        if printer.get("printer_id") == printer_id:
+            filament_ids = printer.get("filament_ids") or []
+            printer["filament_ids"] = [fid for fid in filament_ids if fid != filament_id]
+            break
+    _write_list(path, data)
 
 
 class API:
@@ -30,34 +139,73 @@ class API:
         return project.add_project_version(name, version, file)
     
     def ADD_PRINTER(self, name, IP_address, frontend_port, backend_port, model=None):
-        return equipment.add_printer(name, IP_address, frontend_port, backend_port, model)
+        try:
+            return equipment.add_printer(name, IP_address, frontend_port, backend_port, model)
+        except TypeError:
+            printer_id = equipment.add_printer(name, IP_address, frontend_port, backend_port)
+            if model:
+                if callable(getattr(equipment, "update_printer", None)):
+                    equipment.update_printer(printer_id, model=model)
+                else:
+                    _fallback_update_printer(printer_id, model=model)
+            return printer_id
     
     def ADD_FILAMENT(self, name, material, color, diameter, weight=None):
-        return equipment.add_filament(name, material, color, diameter, weight)
+        try:
+            return equipment.add_filament(name, material, color, diameter, weight)
+        except TypeError:
+            filament_id = equipment.add_filament(name, material, color, diameter)
+            updates = {
+                "name": name,
+                "material": material,
+                "color": color,
+                "diameter": diameter,
+            }
+            if weight is not None:
+                updates["weight"] = weight
+            if callable(getattr(equipment, "update_filament", None)):
+                equipment.update_filament(filament_id, **updates)
+            else:
+                _fallback_update_filament(filament_id, **updates)
+            return filament_id
     
     def REMOVE_PRINTER(self, printer_id):
         return equipment.remove_printer(printer_id)
 
-    def UPDATE_PRINTER(self, printer_id, **updates):
-        return equipment.update_printer(printer_id, **updates)
+    def UPDATE_PRINTER(self, printer_id, updates=None, **kwargs):
+        if isinstance(updates, dict):
+            kwargs.update(updates)
+        if callable(getattr(equipment, "update_printer", None)):
+            return equipment.update_printer(printer_id, **kwargs)
+        return _fallback_update_printer(printer_id, **kwargs)
     
     def REMOVE_FILAMENT(self, filament_id):
         return equipment.remove_filament(filament_id)
 
-    def UPDATE_FILAMENT(self, filament_id, **updates):
-        return equipment.update_filament(filament_id, **updates)
+    def UPDATE_FILAMENT(self, filament_id, updates=None, **kwargs):
+        if isinstance(updates, dict):
+            kwargs.update(updates)
+        if callable(getattr(equipment, "update_filament", None)):
+            return equipment.update_filament(filament_id, **kwargs)
+        return _fallback_update_filament(filament_id, **kwargs)
     
     def ADD_FILAMENT_TO_PRINTER(self, printer_id, filament_id):
         return equipment.add_filament_to_printer(printer_id, filament_id)
 
     def REMOVE_FILAMENT_FROM_PRINTER(self, printer_id, filament_id):
-        return equipment.remove_filament_from_printer(printer_id, filament_id)
+        if callable(getattr(equipment, "remove_filament_from_printer", None)):
+            return equipment.remove_filament_from_printer(printer_id, filament_id)
+        return _fallback_remove_filament_from_printer(printer_id, filament_id)
 
     def LIST_PRINTERS(self, include_status=False):
-        return equipment.list_printers(include_status)
+        if callable(getattr(equipment, "list_printers", None)):
+            return equipment.list_printers(include_status)
+        return _fallback_list_printers(include_status)
 
     def LIST_FILAMENTS(self):
-        return equipment.list_filaments()
+        if callable(getattr(equipment, "list_filaments", None)):
+            return equipment.list_filaments()
+        return _fallback_list_filaments()
     
     def PRINTER_STATUS(self, printer_id):
         return equipment.printer_status(printer_id)

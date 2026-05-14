@@ -20,6 +20,7 @@ const COLORS = [
 ];
 
 const DEFAULT_DIAMETER = 1.75;
+const CUSTOM_MATERIAL_VALUE = '__custom__';
 
 let printers = [];
 let filaments = [];
@@ -38,7 +39,6 @@ function getApiHandle() {
   try {
     if (window.pywebview && window.pywebview.api) return window.pywebview.api;
   } catch (error) {
-    // Ignore cross-origin access errors.
   }
 
   try {
@@ -46,7 +46,6 @@ function getApiHandle() {
       return window.parent.pywebview.api;
     }
   } catch (error) {
-    // Ignore cross-origin access errors.
   }
 
   return null;
@@ -86,7 +85,6 @@ function waitForApi() {
         window.parent.addEventListener('pywebviewready', tryResolve, { once: true });
       }
     } catch (error) {
-      // Ignore cross-origin access errors.
     }
 
     const start = Date.now();
@@ -191,7 +189,7 @@ function renderPrinters() {
         <div class="chip-dot" style="background:${filament.color};border:1px solid rgba(0,0,0,0.15)"></div>
         <span class="chip-name">${filament.name}</span>
         <span class="chip-material">${filament.material}</span>
-        <button class="chip-remove" data-detach="${filament.id}" title="Detach to pool">
+        <button class="chip-remove" data-detach="${filament.id}" title="Detach to pool" type="button">
           <svg viewBox="0 0 12 12"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
         </button>
       </div>
@@ -203,7 +201,7 @@ function renderPrinters() {
         drag filament here
       </div>` : '';
 
-    const label = printer.statusLabel || statusLabel(printer.status);
+    const label = statusLabel(printer.statusLabel || printer.status);
 
     return `
       <div class="printer-card" id="card-${printer.id}" data-printer-id="${printer.id}">
@@ -250,7 +248,16 @@ function renderPrinters() {
   });
 
   document.querySelectorAll('[data-detach]').forEach((button) => {
-    button.addEventListener('click', () => detachFilament(button.dataset.detach));
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        await detachFilament(button.dataset.detach);
+        await loadData();
+      } catch (error) {
+        showMessage(error?.message || 'Failed to detach filament', true);
+      }
+    });
   });
 
   document.querySelectorAll('[data-edit-printer]').forEach((button) => {
@@ -263,7 +270,9 @@ function renderFilaments() {
   const q = (document.getElementById('search-input').value || '').toLowerCase();
 
   const list = filaments.filter((filament) => {
-    const matchesSearch = !q || filament.name.toLowerCase().includes(q) || filament.material.toLowerCase().includes(q);
+    const name = String(filament.name || '').toLowerCase();
+    const material = String(filament.material || '').toLowerCase();
+    const matchesSearch = !q || name.includes(q) || material.includes(q);
     const matchesMat = activeFilter === 'ALL' || filament.material === activeFilter;
     return matchesSearch && matchesMat;
   });
@@ -293,11 +302,13 @@ function renderFilaments() {
             <span class="filament-weight">${filament.weight || 0}g</span>
           </div>
         </div>
-        <div class="drag-handle">
-          <svg viewBox="0 0 24 24"><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
+        <div class="filament-actions">
+          <button class="item-edit" data-edit-filament="${filament.id}" type="button">EDIT</button>
+          <div class="drag-handle">
+            <svg viewBox="0 0 24 24"><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
+          </div>
         </div>
         ${attached ? `<div class="attached-tag">✓ ${printer ? printer.name.split(' ')[0] : ''}</div>` : ''}
-        <button class="item-edit" data-edit-filament="${filament.id}">EDIT</button>
       </div>`;
   }).join('');
 
@@ -428,13 +439,15 @@ function moveGhost(event) {
   ghost.style.top = `${event.clientY - 18}px`;
 }
 
-function openFilamentModal() {
+function openFilamentModalInternal() {
   filamentModalMode = 'add';
   activeFilamentId = null;
   selectedColor = COLORS[0].hex;
   document.getElementById('f-name').value = '';
   document.getElementById('f-material').value = 'PLA';
+  document.getElementById('f-material-custom').value = '';
   document.getElementById('f-weight').value = '';
+  syncMaterialInput();
   buildColorGrid();
   document.querySelector('#filament-modal .modal-title').textContent = 'ADD FILAMENT';
   document.querySelector('#filament-modal .btn-confirm').textContent = 'Add Spool';
@@ -448,8 +461,20 @@ function openFilamentModalForEdit(filamentId) {
   activeFilamentId = filamentId;
   selectedColor = filament.color || COLORS[0].hex;
   document.getElementById('f-name').value = filament.name;
-  document.getElementById('f-material').value = filament.material || 'PLA';
+
+  const materialSelect = document.getElementById('f-material');
+  const materialOptions = Array.from(materialSelect.options).map((option) => option.value);
+  const materialValue = filament.material || 'PLA';
+  if (materialOptions.includes(materialValue)) {
+    materialSelect.value = materialValue;
+    document.getElementById('f-material-custom').value = '';
+  } else {
+    materialSelect.value = CUSTOM_MATERIAL_VALUE;
+    document.getElementById('f-material-custom').value = materialValue;
+  }
+
   document.getElementById('f-weight').value = filament.weight || '';
+  syncMaterialInput();
   buildColorGrid();
   document.querySelector('#filament-modal .modal-title').textContent = 'EDIT FILAMENT';
   document.querySelector('#filament-modal .btn-confirm').textContent = 'Save Changes';
@@ -460,13 +485,43 @@ function closeFilamentModal() {
   document.getElementById('filament-modal').classList.remove('open');
 }
 
+function syncMaterialInput() {
+  const select = document.getElementById('f-material');
+  const customGroup = document.getElementById('f-material-custom-group');
+  const customInput = document.getElementById('f-material-custom');
+  if (!select || !customGroup || !customInput) return;
+
+  if (select.value === CUSTOM_MATERIAL_VALUE) {
+    customGroup.classList.remove('is-hidden');
+    customInput.focus();
+  } else {
+    customGroup.classList.add('is-hidden');
+    customInput.value = '';
+  }
+}
+
+function getMaterialValue() {
+  const select = document.getElementById('f-material');
+  const customInput = document.getElementById('f-material-custom');
+  if (!select) return '';
+  if (select.value === CUSTOM_MATERIAL_VALUE) {
+    return customInput.value.trim();
+  }
+  return select.value;
+}
+
 function buildColorGrid() {
-  document.getElementById('color-grid').innerHTML = COLORS.map((color) => `
+  const grid = document.getElementById('color-grid');
+  grid.innerHTML = COLORS.map((color) => `
     <div class="color-swatch ${color.hex === selectedColor ? 'selected' : ''}"
+      data-color="${color.hex}"
       style="background:${color.hex};border:2px solid ${color.hex === '#ffffff' || color.hex === '#fde68a' ? '#555' : color.hex}"
-      title="${color.name}"
-      onclick="selectColor('${color.hex}', this)"></div>
+      title="${color.name}"></div>
   `).join('');
+
+  grid.querySelectorAll('.color-swatch').forEach((swatch) => {
+    swatch.addEventListener('click', () => selectColor(swatch.dataset.color, swatch));
+  });
 }
 
 function selectColor(hex, el) {
@@ -477,10 +532,17 @@ function selectColor(hex, el) {
 
 async function confirmAddFilament() {
   const name = document.getElementById('f-name').value.trim();
-  const material = document.getElementById('f-material').value;
-  const weight = parseInt(document.getElementById('f-weight').value, 10) || 1000;
+  const material = getMaterialValue();
+  const weightValue = document.getElementById('f-weight').value.trim();
+  const weight = weightValue ? parseInt(weightValue, 10) : null;
+
   if (!name) {
     document.getElementById('f-name').focus();
+    return;
+  }
+
+  if (!material) {
+    document.getElementById('f-material-custom').focus();
     return;
   }
 
@@ -594,6 +656,16 @@ document.getElementById('printer-modal').addEventListener('click', (event) => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+  const addFilamentBtn = document.getElementById('add-filament-btn');
+  if (addFilamentBtn) {
+    addFilamentBtn.addEventListener('click', () => openFilamentModalInternal());
+  }
+
+  const materialSelect = document.getElementById('f-material');
+  if (materialSelect) {
+    materialSelect.addEventListener('change', syncMaterialInput);
+  }
+
   waitForApi().then(() => {
     loadData().catch((error) => {
       showMessage(error.message || 'Failed to load data', true);
@@ -609,7 +681,7 @@ window.openFilamentModal = (filamentId) => {
     openFilamentModalForEdit(filamentId);
     return;
   }
-  openFilamentModal();
+  openFilamentModalInternal();
 };
 
 window.closeFilamentModal = closeFilamentModal;

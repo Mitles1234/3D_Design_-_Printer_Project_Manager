@@ -30,6 +30,8 @@
 	--text-dim: #5e7b86;
 	--green: #059669;
 	--green-dim: rgba(5,150,105,0.1);
+	--orange: #f59e0b;
+	--orange-dim: rgba(245,158,11,0.12);
 	--red: #dc2626;
 	--red-dim: rgba(220,38,38,0.1);
 	--blue: #0095bb;
@@ -263,15 +265,15 @@ header {
 }
 
 .status-badge.printing {
-	background: var(--green-dim);
-	color: var(--green);
-	border: 1px solid rgba(16,185,129,0.3);
+	background: var(--orange-dim);
+	color: var(--orange);
+	border: 1px solid rgba(245,158,11,0.3);
 }
 
 .status-badge.idle {
-	background: rgba(0,149,187,0.12);
-	color: var(--blue);
-	border: 1px solid rgba(0,149,187,0.25);
+	background: var(--green-dim);
+	color: var(--green);
+	border: 1px solid rgba(16,185,129,0.3);
 }
 
 .status-badge.offline {
@@ -510,10 +512,14 @@ header {
 	position: relative;
 }
 
+.filament-actions {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
+}
+
 .item-edit {
-	position: absolute;
-	bottom: 8px;
-	right: 10px;
 	border: 1px solid var(--border);
 	background: rgba(255,255,255,0.8);
 	color: var(--text-muted);
@@ -523,6 +529,7 @@ header {
 	padding: 2px 6px;
 	border-radius: 999px;
 	cursor: pointer;
+	flex-shrink: 0;
 }
 
 .item-edit:hover {
@@ -728,6 +735,8 @@ header {
 
 .form-group { margin-bottom: 14px; }
 
+.is-hidden { display: none; }
+
 .form-label {
 	display: block;
 	font-family: var(--mono);
@@ -783,11 +792,24 @@ header {
 	border-radius: 50%;
 	cursor: pointer;
 	border: 2px solid transparent;
+	position: relative;
 	transition: transform 0.1s, border-color 0.1s;
 }
 
 .color-swatch:hover { transform: scale(1.15); }
-.color-swatch.selected { border-color: white; transform: scale(1.1); }
+.color-swatch.selected {
+	border-color: #0f2f3a;
+	transform: scale(1.05);
+	box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--amber);
+}
+
+.color-swatch.selected::after {
+	content: '';
+	position: absolute;
+	inset: 6px;
+	border-radius: 50%;
+	border: 2px solid rgba(15, 47, 58, 0.6);
+}
 
 .modal-actions {
 	display: flex;
