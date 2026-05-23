@@ -46,25 +46,38 @@ def _fallback_list_printers(include_status=False):
                 except (TypeError, ValueError):
                     backend_port = 7125
             frontend_port = printer.get("frontend_port")
+            hotend = {"c": None, "t": None}
+            bed = {"c": None, "t": None}
             if callable(getattr(equipment, "printer_status", None)):
                 try:
                     try:
-                        color, label = equipment.printer_status(
+                        result = equipment.printer_status(
                             printer.get("IP_address"),
                             backend_port,
                             frontend_port,
+                            include_temps=True,
                         )
                     except TypeError:
-                        color, label = equipment.printer_status(
+                        result = equipment.printer_status(
                             printer.get("IP_address"),
                             backend_port,
                         )
+                    if isinstance(result, (list, tuple)) and len(result) >= 2:
+                        color, label = result[0], result[1]
+                        if len(result) > 2 and isinstance(result[2], dict):
+                            hotend = result[2]
+                        if len(result) > 3 and isinstance(result[3], dict):
+                            bed = result[3]
+                    else:
+                        color, label = "red", "Offline"
                 except Exception:
                     color, label = "red", "Offline"
             else:
                 color, label = "red", "Offline"
             printer["status_color"] = color
             printer["status_label"] = label
+            printer["status_hotend"] = hotend
+            printer["status_bed"] = bed
             if color == "orange":
                 printer["status"] = "printing"
             elif color == "green":

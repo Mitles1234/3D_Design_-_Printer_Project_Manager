@@ -21,6 +21,8 @@ const COLORS = [
 
 const DEFAULT_DIAMETER = 1.75;
 const CUSTOM_MATERIAL_VALUE = '__custom__';
+const TRANSPARENT_DRAG_IMAGE = new Image();
+TRANSPARENT_DRAG_IMAGE.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
 let printers = [];
 let filaments = [];
@@ -111,6 +113,8 @@ async function loadData() {
     model: printer.model || 'Unknown model',
     status: printer.status || 'offline',
     statusLabel: printer.status_label || 'OFFLINE',
+    hotend: normalizeTemp(printer.status_hotend),
+    bed: normalizeTemp(printer.status_bed),
     filament_ids: Array.isArray(printer.filament_ids) ? printer.filament_ids : [],
     IP_address: printer.IP_address || '',
     frontend_port: printer.frontend_port || '',
@@ -162,6 +166,27 @@ function statusLabel(status) {
   return map[status] || String(status || '').toUpperCase();
 }
 
+function normalizeTemp(value) {
+  if (!value || typeof value !== 'object') {
+    return { c: null, t: null };
+  }
+  const current = Number.isFinite(value.c) ? value.c : null;
+  const target = Number.isFinite(value.t) ? value.t : null;
+  return { c: current, t: target };
+}
+
+function formatTempHtml(temp, isOffline) {
+  if (isOffline) return '-';
+  if (!temp || !Number.isFinite(temp.c)) return '-';
+  const current = Math.round(temp.c);
+  const target = Number.isFinite(temp.t) ? Math.round(temp.t) : null;
+  let html = `${current}&deg;`;
+  if (target && target > 0) {
+    html += ` <span class="temp-target">/ ${target}&deg;</span>`;
+  }
+  return html;
+}
+
 function renderAll() {
   renderPrinters();
   renderFilaments();
@@ -202,24 +227,41 @@ function renderPrinters() {
       </div>` : '';
 
     const label = statusLabel(printer.statusLabel || printer.status);
+    const isOffline = printer.status === 'offline';
+    const hotendHtml = formatTempHtml(printer.hotend, isOffline);
+    const bedHtml = formatTempHtml(printer.bed, isOffline);
 
     return `
       <div class="printer-card" id="card-${printer.id}" data-printer-id="${printer.id}">
         <div class="printer-header">
-          <div class="printer-icon">
-            <svg viewBox="0 0 24 24">
-              <rect x="2" y="9" width="20" height="8" rx="2"/>
-              <polyline points="6 9 6 3 18 3 18 9"/>
-              <polyline points="6 17 6 21 18 21 18 17"/>
-              <circle cx="18" cy="13" r="1" fill="currentColor"/>
-            </svg>
+          <div class="printer-icon-stack">
+            <div class="printer-icon">
+              <svg viewBox="0 0 24 24">
+                <rect x="2" y="9" width="20" height="8" rx="2"/>
+                <polyline points="6 9 6 3 18 3 18 9"/>
+                <polyline points="6 17 6 21 18 21 18 17"/>
+                <circle cx="18" cy="13" r="1" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="printer-temps">
+              <div class="temp-row">
+                <i class="ti ti-flame temp-icon hotend" aria-hidden="true"></i>
+                <span class="temp-value">${hotendHtml}</span>
+              </div>
+              <div class="temp-row">
+                <i class="ti ti-square temp-icon" aria-hidden="true"></i>
+                <span class="temp-value">${bedHtml}</span>
+              </div>
+            </div>
           </div>
           <div class="printer-meta">
             <div class="printer-name">${printer.name}</div>
             <div class="printer-model">${printer.model}</div>
           </div>
           <div class="printer-actions">
-            <button class="edit-btn" data-edit-printer="${printer.id}">EDIT</button>
+            <button class="edit-btn" data-edit-printer="${printer.id}" aria-label="Edit printer" title="Edit printer">
+              <i class="ti ti-pencil" aria-hidden="true"></i>
+            </button>
             <div class="status-badge ${printer.status}">
               ${printer.status === 'printing' ? '<span class="pulse-dot" style="display:inline-block;margin-right:5px"></span>' : ''}
               ${label}
@@ -303,12 +345,11 @@ function renderFilaments() {
           </div>
         </div>
         <div class="filament-actions">
-          <button class="item-edit" data-edit-filament="${filament.id}" type="button">EDIT</button>
-          <div class="drag-handle">
-            <svg viewBox="0 0 24 24"><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
-          </div>
+          <button class="item-edit" data-edit-filament="${filament.id}" type="button" aria-label="Edit filament" title="Edit filament">
+            <i class="ti ti-pencil" aria-hidden="true"></i>
+          </button>
+          ${attached ? `<div class="attached-tag">✓ ${printer ? printer.name.split(' ')[0] : ''}</div>` : ''}
         </div>
-        ${attached ? `<div class="attached-tag">✓ ${printer ? printer.name.split(' ')[0] : ''}</div>` : ''}
       </div>`;
   }).join('');
 
@@ -334,6 +375,9 @@ function onFilamentDragStart(event, filamentId) {
   const filament = filaments.find((item) => item.id === filamentId);
   dragData = { filamentId, sourceType: filament && filament.printerId ? 'printer' : 'pool', sourcePrinterId: filament ? filament.printerId : null };
   event.dataTransfer.effectAllowed = 'move';
+  if (event.dataTransfer && event.dataTransfer.setDragImage) {
+    event.dataTransfer.setDragImage(TRANSPARENT_DRAG_IMAGE, 0, 0);
+  }
   showGhost(filament);
   setTimeout(() => {
     const el = document.getElementById(`item-${filamentId}`);
@@ -345,6 +389,9 @@ function onChipDragStart(event, filamentId, printerId) {
   const filament = filaments.find((item) => item.id === filamentId);
   dragData = { filamentId, sourceType: 'printer', sourcePrinterId: printerId };
   event.dataTransfer.effectAllowed = 'move';
+  if (event.dataTransfer && event.dataTransfer.setDragImage) {
+    event.dataTransfer.setDragImage(TRANSPARENT_DRAG_IMAGE, 0, 0);
+  }
   showGhost(filament);
   setTimeout(() => {
     const chip = document.getElementById(`chip-${filamentId}`);

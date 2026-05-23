@@ -46,6 +46,23 @@ def _port_open(host, port, timeout=1.0):
         return False
 
 
+def _safe_temp(value):
+    if isinstance(value, (int, float)):
+        return int(round(value))
+    return None
+
+
+def _extract_first_temp(status, keys):
+    for key in keys:
+        data = status.get(key)
+        if isinstance(data, dict):
+            return {
+                "c": _safe_temp(data.get("temperature")),
+                "t": _safe_temp(data.get("target")),
+            }
+    return {"c": None, "t": None}
+
+
 def _normalize_printer(printer):
     if "model" not in printer:
         printer["model"] = None
@@ -208,13 +225,16 @@ def list_printers(include_status=False):
     data = [_normalize_printer(item) for item in _load_list(printers_path)]
     if include_status:
         for printer in data:
-            color, label = printer_status(
+            color, label, hotend, bed = printer_status(
                 printer.get("IP_address"),
                 printer.get("backend_port", 7125),
                 printer.get("frontend_port"),
+                include_temps=True,
             )
             printer["status_color"] = color
             printer["status_label"] = label
+            printer["status_hotend"] = hotend
+            printer["status_bed"] = bed
             if color == "orange":
                 printer["status"] = "printing"
             elif color == "green":
@@ -229,8 +249,12 @@ def list_filaments():
     return [_normalize_filament(item) for item in _load_list(filaments_path)]
 
 
-def printer_status(IP_address, backend_port=7125, frontend_port=None):
+def printer_status(IP_address, backend_port=7125, frontend_port=None, include_temps=False):
+    hotend = {"c": None, "t": None}
+    bed = {"c": None, "t": None}
     if not IP_address:
+        if include_temps:
+            return "grey", "Disconnected", hotend, bed
         return "grey", "Disconnected"
 
     try:
@@ -239,26 +263,38 @@ def printer_status(IP_address, backend_port=7125, frontend_port=None):
         backend_port = 7125
 
     base_url = f"http://{IP_address}:{backend_port}"
-    query_url = f"{base_url}/printer/objects/query?print_stats&virtual_sdcard"
+    query_url = f"{base_url}/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed"
 
     payload = _try_json(query_url, timeout=1.0)
     if payload:
         status = payload.get("result", {}).get("status", {})
         print_stats = status.get("print_stats", {})
         sdcard = status.get("virtual_sdcard", {})
+        hotend = _extract_first_temp(status, ("extruder", "extruder0"))
+        bed = _extract_first_temp(status, ("heater_bed", "heater_bed0"))
 
         if print_stats.get("state") == "printing":
             progress = sdcard.get("progress")
             if isinstance(progress, (int, float)):
                 percent = int(round(progress * 100))
+                if include_temps:
+                    return "orange", f"{percent}%", hotend, bed
                 return "orange", f"{percent}%"
+            if include_temps:
+                return "orange", "Printing", hotend, bed
             return "orange", "Printing"
 
+        if include_temps:
+            return "green", "online", hotend, bed
         return "green", "online"
 
     if _port_open(IP_address, backend_port, timeout=1.0):
+        if include_temps:
+            return "green", "online", hotend, bed
         return "green", "online"
 
+    if include_temps:
+        return "red", "Offline", hotend, bed
     return "red", "Offline"
 
 

@@ -170,6 +170,7 @@ header {
 	border: 1px solid var(--border);
 	border-radius: 10px;
 	overflow: hidden;
+	position: relative;
 	transition: border-color 0.15s;
 }
 
@@ -185,6 +186,7 @@ header {
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 10px;
+	position: relative;
 }
 
 .printer-actions {
@@ -198,13 +200,22 @@ header {
 	border: 1px solid var(--border);
 	background: transparent;
 	color: var(--text-muted);
-	font-size: 10px;
+	font-size: 12px;
 	font-family: var(--mono);
-	letter-spacing: 0.08em;
-	padding: 3px 8px;
+	letter-spacing: 0;
+	width: 28px;
+	height: 24px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	border-radius: 999px;
 	cursor: pointer;
 	transition: border-color 0.12s, color 0.12s;
+}
+
+.edit-btn i {
+	font-size: 14px;
 }
 
 .edit-btn:hover {
@@ -232,6 +243,44 @@ header {
 	stroke-width: 1.5;
 	stroke-linecap: round;
 	stroke-linejoin: round;
+}
+
+.printer-icon-stack {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.printer-temps {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+}
+
+.temp-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	color: var(--text-muted);
+	font-family: var(--mono);
+}
+
+.temp-icon {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.temp-icon.hotend {
+	font-size: 13px;
+	color: #d97706;
+}
+
+.temp-target {
+	color: var(--text-dim);
 }
 
 .printer-meta { flex: 1; min-width: 0; }
@@ -280,6 +329,10 @@ header {
 	background: var(--red-dim);
 	color: var(--red);
 	border: 1px solid rgba(239,68,68,0.25);
+	position: absolute;
+	right: 12px;
+	bottom: 10px;
+	z-index: 2;
 }
 
 .status-badge.maintenance {
@@ -523,13 +576,22 @@ header {
 	border: 1px solid var(--border);
 	background: rgba(255,255,255,0.8);
 	color: var(--text-muted);
-	font-size: 9px;
+	font-size: 12px;
 	font-family: var(--mono);
-	letter-spacing: 0.08em;
-	padding: 2px 6px;
+	letter-spacing: 0;
+	width: 26px;
+	height: 22px;
+	padding: 0;
 	border-radius: 999px;
 	cursor: pointer;
 	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.item-edit i {
+	font-size: 13px;
 }
 
 .item-edit:hover {
@@ -621,10 +683,9 @@ header {
 	stroke-width: 1.5;
 }
 
+
 .attached-tag {
-	position: absolute;
-	top: 6px;
-	right: 8px;
+	align-self: flex-end;
 	font-family: var(--mono);
 	font-size: 9px;
 	letter-spacing: 0.05em;
@@ -633,6 +694,11 @@ header {
 	padding: 2px 6px;
 	border-radius: 20px;
 	border: 1px solid rgba(16,185,129,0.3);
+	margin-top: 6px;
+	max-width: 110px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .panel-footer {
