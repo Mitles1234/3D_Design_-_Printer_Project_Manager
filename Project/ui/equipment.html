@@ -64,9 +64,24 @@
         <span>ATTACHED <strong id="stat-attached">0</strong></span>
         <span>AVAILABLE <strong id="stat-avail">0</strong></span>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" id="header-actions">
+        <div class="header-search" id="printer-search-ui">
+          <div class="srch" id="printer-search-field">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="text" id="printer-search" placeholder="Search printers..." oninput="setPrinterSearch(this.value)">
+          </div>
+          <button class="cib" type="button" id="printer-search-close" title="Close">
+            <i class="ti ti-x" aria-hidden="true"></i>
+          </button>
+        </div>
+        <button class="cib" type="button" id="printer-search-open" title="Search">
+          <i class="ti ti-search" aria-hidden="true"></i>
+        </button>
         <div class="header-message" id="header-message"></div>
-        <button class="action-btn" type="button" onclick="openPrinterModal()">Add Printer</button>
+        <button class="btn-p" type="button" id="printer-new" onclick="openPrinterModal()">
+          <i class="ti ti-plus" aria-hidden="true"></i>
+          New Printer
+        </button>
       </div>
     </header>
     <div class="main">

@@ -29,6 +29,7 @@ let filaments = [];
 let dragData = null;
 let selectedColor = COLORS[0].hex;
 let activeFilter = 'ALL';
+let printerSearch = '';
 let filamentModalMode = 'add';
 let activeFilamentId = null;
 let printerModalMode = 'add';
@@ -157,6 +158,11 @@ function setFilter(el, mat) {
   renderFilaments();
 }
 
+function setPrinterSearch(value) {
+  printerSearch = String(value || '');
+  renderPrinters();
+}
+
 function getFilamentsForPrinter(printerId) {
   return filaments.filter((filament) => filament.printerId === printerId);
 }
@@ -203,7 +209,23 @@ function updateStats() {
 
 function renderPrinters() {
   const grid = document.getElementById('printers-grid');
-  const html = printers.map((printer) => {
+  const query = printerSearch.trim().toLowerCase();
+  const list = query
+    ? printers.filter((printer) => {
+        const haystack = [printer.name, printer.model, printer.statusLabel, printer.status]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      })
+    : printers;
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state">No printers found.</div>';
+    return;
+  }
+
+  const html = list.map((printer) => {
     const attached = getFilamentsForPrinter(printer.id);
     const chipsHtml = attached.map((filament) => `
       <div class="attached-chip"
@@ -703,6 +725,38 @@ document.getElementById('printer-modal').addEventListener('click', (event) => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+  const headerActions = document.getElementById('header-actions');
+  const searchOpenBtn = document.getElementById('printer-search-open');
+  const searchCloseBtn = document.getElementById('printer-search-close');
+  const searchInput = document.getElementById('printer-search');
+
+  const openSearch = () => {
+    if (!headerActions || !searchInput) return;
+    headerActions.classList.add('search-open');
+    searchInput.focus();
+    searchInput.select();
+  };
+
+  const closeSearch = () => {
+    if (!headerActions || !searchInput) return;
+    headerActions.classList.remove('search-open');
+    if (searchInput.value) {
+      searchInput.value = '';
+      setPrinterSearch('');
+    }
+  };
+
+  if (searchOpenBtn) searchOpenBtn.addEventListener('click', openSearch);
+  if (searchCloseBtn) searchCloseBtn.addEventListener('click', closeSearch);
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSearch();
+      }
+    });
+  }
+
   const addFilamentBtn = document.getElementById('add-filament-btn');
   if (addFilamentBtn) {
     addFilamentBtn.addEventListener('click', () => openFilamentModalInternal());

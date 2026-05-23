@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Design Project Manager</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#EDF2F7;--srf:#fff;--srf2:#F7FAFC;
+  --acc:#0098A8;--accL:#E6F7F9;--accT:#00626E;
+  --bdr:#E2E8F0;--bdr2:#CBD5E0;
+  --t1:#1A202C;--t2:#4A5568;--t3:#718096;--t4:#A0AEC0;
+  --red:#E53E3E;--redL:#FFF5F5;
+  --grn:#38A169;--grnL:#F0FFF4;
+  --amb:#D69E2E;--ambL:#FFFBEB;
+}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;height:100vh;display:flex;flex-direction:column;color:var(--t1);overflow:hidden}
+#root{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:1100px;width:100%;margin:0 auto;border-left:1px solid var(--bdr);border-right:1px solid var(--bdr)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:var(--t4)}
+
+/* Top bar */
+.topbar{height:48px;background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:stretch;flex-shrink:0;position:relative;z-index:10}
+.metric{display:flex;align-items:center;gap:6px;padding:0 18px;border-right:1px solid var(--bdr);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--t3);text-transform:uppercase;white-space:nowrap;user-select:none}
+.metric .n{color:var(--t1);font-weight:800;font-size:14px;letter-spacing:0}
+.tbr{display:flex;align-items:center;gap:8px;padding:0 14px;margin-left:auto}
+
+/* Body */
+.body{flex:1;display:flex;overflow:hidden}
+
+/* Left */
+.left{flex:1;overflow-y:auto;padding:20px 20px 14px;min-width:0;background:var(--bg)}
+.sh{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.sh-l{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--t3);text-transform:uppercase;white-space:nowrap}
+.sh-line{flex:1;height:1px;background:var(--bdr)}
+
+/* Cards */
+.card{background:var(--srf);border:1px solid var(--bdr);border-radius:10px;cursor:pointer;transition:border-color .12s,background .1s;position:relative;user-select:none;box-sizing:border-box;flex-shrink:0}
+.card:hover{border-color:var(--bdr2);background:var(--srf2)}
+.card.sel{border-color:var(--acc)!important;background:var(--accL)!important}
+.card.over{border-color:var(--acc)!important;background:var(--accL)!important}
+.card.dim{opacity:.18}.card.grab{cursor:grab}.card.grab:active{cursor:grabbing}
+.card.ctr{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;gap:3px}
+.card-acts{display:none;position:absolute;top:6px;right:6px;gap:3px;align-items:center}
+.card:hover .card-acts{display:flex}
+.cbadge{position:absolute;top:8px;right:8px;background:var(--accL);color:var(--accT);border:1px solid rgba(0,152,168,.2);font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;pointer-events:none;line-height:1.4}
+.card:hover .cbadge{display:none}
+.newcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;flex-shrink:0;border-radius:10px;cursor:pointer;border:1.5px dashed var(--bdr2);text-align:center;transition:all .12s;user-select:none;box-sizing:border-box}
+.newcard:hover,.newcard.over{border-color:var(--acc);background:var(--accL);color:var(--accT)}
+
+/* Buttons */
+.btn-p{background:var(--acc);color:#fff;border:none;border-radius:100px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;line-height:1;white-space:nowrap;font-family:inherit;transition:opacity .1s}
+.btn-p:hover{opacity:.88}
+.btn-s{background:var(--srf);color:var(--t2);border:1px solid var(--bdr);border-radius:7px;padding:6px 13px;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;line-height:1;white-space:nowrap;font-family:inherit;transition:background .1s}
+.btn-s:hover{background:var(--srf2)}.btn-s:disabled{opacity:.4;cursor:not-allowed}
+.btn-d{background:transparent;color:var(--accT);border:1.5px dashed var(--acc);border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;width:100%;font-family:inherit;transition:background .12s}
+.btn-d:hover{background:var(--accL)}.btn-d:disabled{opacity:.3;cursor:not-allowed;border-color:var(--bdr2);color:var(--t4)}
+.btn-danger{background:var(--redL);color:var(--red);border:1px solid #FEB2B2;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit}
+.cib{width:22px;height:22px;border-radius:50%;border:1px solid var(--bdr);background:var(--srf);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0;line-height:1;transition:all .1s;flex-shrink:0}
+.cib:hover{color:var(--t1);border-color:var(--bdr2);background:var(--srf2)}
+.cib.del:hover{color:var(--red);border-color:#FEB2B2;background:var(--redL)}
+.cib.on{background:var(--accL);color:var(--accT);border-color:var(--acc)}
+
+/* Inputs */
+input,select{background:var(--srf);border:1px solid var(--bdr);border-radius:7px;color:var(--t1);font-size:12px;padding:7px 10px;font-family:inherit;width:100%;box-sizing:border-box;transition:border-color .1s}
+input:focus,select:focus{outline:none;border-color:var(--acc)}
+.det-inp{border:none;border-radius:0;padding:0;font-size:12px;border-bottom:1px solid transparent;background:transparent;width:100%}
+.det-inp:focus{outline:none;border-bottom-color:var(--acc)}
+.mdinput{flex:1;width:100%;resize:none;border:none;background:transparent;color:var(--t1);font-family:'SF Mono',Monaco,Consolas,monospace;font-size:11px;line-height:1.7;padding:14px 18px;box-sizing:border-box}
+.mdinput:focus{outline:none}
+
+/* Right panel */
+.right{width:260px;background:var(--srf);border-left:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.insp-head{height:40px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--bdr);gap:8px;flex-shrink:0;background:var(--srf2)}
+.tabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0;height:36px;align-items:stretch;background:var(--srf)}
+.tab{flex:1;border:none;background:transparent;color:var(--t3);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;transition:color .1s,border-color .1s}
+.tab:hover{color:var(--t1)}.tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.notes-path{padding:7px 14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:7px;flex-shrink:0;background:var(--srf2)}
+
+/* File tree */
+.ft-r{display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:7px;cursor:pointer;transition:background .08s;user-select:none;min-width:0}
+.ft-r:hover{background:var(--srf2)}.ft-r.fsel{background:var(--accL)}.ft-r.isel{background:var(--accL)}
+
+/* Search */
+.srch{display:flex;align-items:center;gap:7px;border:1px solid var(--bdr);border-radius:8px;padding:0 10px;background:var(--srf)}
+.srch input{border:none;background:transparent;font-size:12px;padding:7px 0;font-family:inherit;width:100%;color:var(--t1)}
+.srch input::placeholder{color:var(--t4)}
+.srch input:focus{outline:none}
+
+/* Filter chips */
+.fchip{padding:4px 13px;border-radius:100px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--bdr);background:var(--srf);color:var(--t3);font-family:inherit;line-height:1.5;transition:all .1s}
+.fchip:hover{border-color:var(--bdr2);color:var(--t2)}.fchip.on{border-color:var(--acc);color:var(--accT);background:var(--accL)}
+
+/* Details */
+.det-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.det-key{font-size:10px;color:var(--t3);width:76px;flex-shrink:0;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+.det-sec-l{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:10px}
+
+/* Material pill */
+.mat-pill{display:inline-block;padding:2px 7px;border-radius:100px;font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1.5}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(26,32,44,.28);display:flex;align-items:center;justify-content:center;z-index:100}
+.mbox{background:var(--srf);border-radius:14px;padding:24px 26px;width:320px;box-sizing:border-box;max-height:90vh;overflow-y:auto}
+.mfield{margin-bottom:14px}
+.ml{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.pblock{background:var(--srf2);border:1px solid var(--bdr);border-radius:8px;padding:11px 14px;margin-bottom:12px}
+
+/* Context menu */
+.ctx{position:fixed;background:var(--srf);border:1px solid var(--bdr);border-radius:10px;padding:5px;min-width:174px;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.ctx-i{display:flex;align-items:center;gap:9px;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--t1);transition:background .08s}
+.ctx-i:hover{background:var(--srf2)}.ctx-i.warn{color:var(--red)}
+.ctx-sep{height:1px;background:var(--bdr);margin:4px 8px}
+
+/* Status bar */
+.sbar{height:42px;background:var(--srf);border-top:1px solid var(--bdr);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pb-bg{height:4px;border-radius:2px;background:var(--bdr);max-width:90px;flex:1}
+.pb-fill{height:4px;border-radius:2px;background:var(--acc);transition:width .3s}
+
+/* Toast */
+.toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:300;background:var(--t1);color:#fff;font-size:11px;padding:9px 20px;border-radius:100px;white-space:nowrap;display:flex;align-items:center;gap:7px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+
+/* Empty state */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;flex:1;padding:32px;text-align:center;color:var(--t4)}
+.divider{width:1px;height:16px;background:var(--bdr);flex-shrink:0;margin:0 2px}
+.pro-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:8px;margin-bottom:10px;max-height:260px;overflow-y:auto;padding:2px}
+.pro-card{background:var(--srf);border:1.5px solid var(--bdr);border-radius:8px;padding:10px 11px;cursor:pointer;transition:all .12s;position:relative;min-width:0}
+.pro-card:hover{border-color:var(--bdr2);background:var(--srf2)}
+.pro-card.pro-sel{border-color:var(--acc);background:var(--accL)}
+.pro-card-acts{display:none;position:absolute;top:5px;right:5px;gap:3px;align-items:center}
+.pro-card:hover .pro-card-acts{display:flex}
+.pro-new{background:transparent;border:1.5px dashed var(--bdr2);border-radius:8px;padding:10px 11px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:all .12s;min-height:76px;font-family:inherit}
+.pro-new:hover{border-color:var(--acc);background:var(--accL);color:var(--accT)}
+.mbox-wide{background:var(--srf);border-radius:14px;padding:24px 26px;width:480px;box-sizing:border-box;max-height:90vh;overflow-y:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {useState,useRef}=React;
+const h=React.createElement;
+
+/* ── Printer states ── */
+const PS=[
+  {label:"Ready",connected:true,dot:"#38A169",hotend:{c:27,t:0},bed:{c:24,t:0},printing:null},
+  {label:"Heating",connected:true,dot:"#D69E2E",hotend:{c:142,t:215},bed:{c:38,t:60},printing:null},
+  {label:"Printing",connected:true,dot:"#0098A8",hotend:{c:215,t:215},bed:{c:60,t:60},printing:{file:"bracket_v1.1.gcode",pct:47}},
+  {label:"Offline",connected:false,dot:"#E53E3E",hotend:{c:22,t:0},bed:{c:22,t:0},printing:null},
+];
+
+/* ── Material colours ── */
+const MC={PLA:{bg:"#DBEAFE",c:"#1D4ED8"},PETG:{bg:"#D1FAE5",c:"#065F46"},ASA:{bg:"#FEF3C7",c:"#92400E"},ABS:{bg:"#FCE7F3",c:"#9D174D"},TPU:{bg:"#EDE9FE",c:"#5B21B6"},Nylon:{bg:"#F0F9FF",c:"#0369A1"}};
+const ms=m=>MC[m]||{bg:"#F7FAFC",c:"#718096"};
+
+/* ── File icons / colours ── */
+const FI={stl:"ti-box","3mf":"ti-box",gcode:"ti-code"};
+const FC={stl:"#D97706","3mf":"#2563EB",gcode:"#059669"};
+const MATS=["PLA","PETG","ASA","ABS","TPU","Nylon","PC","PA-CF"];
+
+/* ── Seed data ── */
+const INIT=[
+  {id:"p1",name:"Shelf Bracket System",desc:"Parametric 80/20 extrusion bracket",created:"2026-04-10",
+   md:"# Shelf Bracket System\n\nParametric bracket for 80×40mm extrusion rail mounting.\n\n## Objective\n\nModular bracket supporting ≥10kg static load, no-support print.\n\n## Notes\n\n- Material: PETG or ASA\n- Hardware: M5 bolts\n- Test: graduated static weights",
+   iters:[
+    {id:"i1",ver:"1.0",label:"Initial Design",date:"2026-04-10",meta:{material:"PETG",color:"Natural",weight:"12g"},
+     files:[{name:"bracket_v1.stl",type:"stl",size:"2.4 MB"},{name:"bracket_v1.3mf",type:"3mf",size:"1.1 MB"}],
+     md:"# v1.0 — Initial Design\n\n**Date:** 2026-04-10\n\n## Changes\n\n- Created base bracket geometry\n- Added M5 mounting hole pattern\n- Exported STL + 3MF\n\n## Notes\n\nFirst draft. Passed 6kg static test."},
+    {id:"i2",ver:"1.1",label:"Stress Relief Chamfer",date:"2026-04-14",meta:{material:"PETG",color:"Natural",weight:"14g"},
+     files:[{name:"bracket_v1.1.stl",type:"stl",size:"2.6 MB"},{name:"bracket_v1.1.gcode",type:"gcode",size:"8.9 MB"}],
+     md:"# v1.1 — Stress Relief Chamfer\n\n**Date:** 2026-04-14\n\n## Changes\n\n- Added 3mm chamfer to inner corner\n- Wall thickness: 2.4 → 3.2mm\n- Holes updated to M5 clearance\n\n## Notes\n\nv1.0 cracked under 8kg. Chamfer redistributes stress. Passed 10kg test."},
+    {id:"i3",ver:"1.2",label:"Wide Mount Variant",date:"2026-05-01",meta:{material:"ASA",color:"Black",weight:"22g"},
+     files:[{name:"bracket_wide_v1.2.stl",type:"stl",size:"3.1 MB"}],
+     md:"# v1.2 — Wide Mount Variant\n\n**Date:** 2026-05-01\n\n## Changes\n\n- Widened flange: 40 → 80mm\n- Added second bolt row\n- Switched to ASA for UV resistance\n\n## Notes\n\nDouble-track 80/20 rail. Load test pending."},
+   ]},
+  {id:"p2",name:"Klipper Electronics Mount",desc:"RPi 4 + BTT Octopus enclosure",created:"2026-03-22",
+   md:"# Klipper Electronics Mount\n\nRPi 4 + BTT Octopus v1.1 enclosure mount.\n\n## Notes\n\n- Verified vs BTT Octopus Rev 1.1\n- PETG minimum for thermal tolerance",
+   iters:[
+    {id:"i4",ver:"1.0",label:"Draft Layout",date:"2026-03-22",meta:{material:"PLA",color:"Grey",weight:"31g"},
+     files:[{name:"elec_mount_draft.stl",type:"stl",size:"5.2 MB"}],
+     md:"# v1.0 — Draft Layout\n\n**Date:** 2026-03-22\n\n## Changes\n\n- Initial geometry from RPi 4 drawing\n- Placeholder mounting holes\n\n## Notes\n\nNeeds hardware check before finalising."},
+    {id:"i5",ver:"2.0",label:"Cable Management",date:"2026-04-05",meta:{material:"PETG",color:"Black",weight:"48g"},
+     files:[{name:"elec_mount_v2.stl",type:"stl",size:"6.8 MB"},{name:"elec_mount_v2.3mf",type:"3mf",size:"3.4 MB"},{name:"elec_mount_v2.gcode",type:"gcode",size:"14.2 MB"}],
+     md:"# v2.0 — Cable Management\n\n**Date:** 2026-04-05\n\n## Changes\n\n- Full redesign from scratch\n- 8mm cable routing channels\n- DIN rail clips integrated\n- Standoffs verified vs Rev 1.1"},
+   ]},
+  {id:"p3",name:"Filament Spool Holder",desc:"Wall-mounted dry box spool system",created:"2026-05-10",
+   md:"# Filament Spool Holder\n\nWall-mounted dry box system for 1kg spools.\n\n## Notes\n\n- Bearing: 608ZZ press-fit\n- Wall anchor: M6 bolts",
+   iters:[
+    {id:"i6",ver:"1.0",label:"Single Spool Prototype",date:"2026-05-10",meta:{material:"PLA",color:"White",weight:"18g"},
+     files:[{name:"spool_holder_v1.stl",type:"stl",size:"1.9 MB"}],
+     md:"# v1.0 — Single Spool Prototype\n\n**Date:** 2026-05-10\n\n## Changes\n\n- Spool axle mount geometry\n- 608ZZ bearing slot (press-fit)\n- Wall anchor M6 — 4 points\n\n## Notes\n\nSingle spool to validate bearing friction before multi-spool variant."},
+   ]},
+];
+
+/* ── Markdown helpers ── */
+function parseBold(s){
+  const parts=[];let r=s,k=0;
+  while(r.includes("**")){
+    const a=r.indexOf("**"),b=r.indexOf("**",a+2);
+    if(b===-1){parts.push(r);r="";break;}
+    if(a>0)parts.push(r.slice(0,a));
+    parts.push(h("strong",{key:k++,style:{color:"var(--t1)"}},r.slice(a+2,b)));
+    r=r.slice(b+2);
+  }
+  if(r)parts.push(r);
+  return parts.length===0?"":parts.length===1&&typeof parts[0]==="string"?parts[0]:parts;
+}
+function renderMd(md){
+  if(!md)return h("span",{style:{color:"var(--t4)",fontSize:12}},"No content — click ✎ to start writing.");
+  return md.split("\n").map((ln,i)=>{
+    if(ln.startsWith("# "))return h("div",{key:i,style:{fontSize:17,fontWeight:700,color:"var(--t1)",marginBottom:8,marginTop:i?6:0,lineHeight:1.3}},ln.slice(2));
+    if(ln.startsWith("## "))return h("div",{key:i,style:{fontSize:9,fontWeight:700,color:"var(--t3)",marginTop:14,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.1em"}},ln.slice(3));
+    if(ln.startsWith("- ")||ln.startsWith("— "))return h("div",{key:i,style:{display:"flex",gap:8,marginBottom:3}},
+      h("span",{style:{color:"var(--t4)",flexShrink:0,lineHeight:1.7}},"—"),
+      h("span",{style:{fontSize:12,color:"var(--t2)",lineHeight:1.7}},parseBold(ln.slice(2))));
+    if(!ln.trim())return h("div",{key:i,style:{height:6}});
+    return h("div",{key:i,style:{fontSize:12,color:"var(--t2)",lineHeight:1.7,marginBottom:2}},parseBold(ln));
+  });
+}
+function fmtSz(files){return files.reduce((s,f)=>s+parseFloat(f.size),0).toFixed(1)+" MB";}
+
+/* ── App ── */
+function App(){
+  const [projs,setProjs]=useState(INIT);
+  const [pid,setPid]=useState("p1");
+  const [iid,setIid]=useState("i2");
+  const [tab,setTab]=useState("files");
+  const [editMd,setEditMd]=useState(false);
+  const [selFile,setSelFile]=useState(null);
+  const [ff,setFf]=useState("all");
+  const [fs,setFs]=useState("");
+  const [search,setSearch]=useState("");
+  const [searchOpen,setSearchOpen]=useState(false);
+  const [drop,setDrop]=useState(null);
+  const [dragId,setDragId]=useState(null);
+  const [dragOv,setDragOv]=useState(null);
+  const [dragPid,setDragPid]=useState(null);
+  const [dragPOv,setDragPOv]=useState(null);
+  const [modal,setModal]=useState(null);
+  const [mv,setMv]=useState("");
+  const [mv2,setMv2]=useState("");
+  const [ctxMenu,setCtxMenu]=useState(null);
+  const [pidx,setPidx]=useState(0);
+  const [sett,setSett]=useState({name:"Voron 2.4",ip:"192.168.1.100",api:"Mainsail",path:"/Applications/OrcaSlicer.app"});
+  const [profiles,setProfiles]=useState([
+    {id:"pp1",name:"Draft 0.3mm",lh:"0.30",infill:"15",sup:"None",spd:"Draft",mat:"PLA",notes:"Quick test prints, non-critical parts"},
+    {id:"pp2",name:"Standard 0.2mm",lh:"0.20",infill:"20",sup:"None",spd:"Normal",mat:"PETG",notes:"Everyday functional parts"},
+    {id:"pp3",name:"Quality 0.15mm",lh:"0.15",infill:"30",sup:"Tree",spd:"Normal",mat:"PETG",notes:"Structural parts needing strong layer adhesion"},
+    {id:"pp4",name:"Detail 0.1mm",lh:"0.10",infill:"40",sup:"Tree",spd:"Quality",mat:"PETG",notes:"Fine detail work, small features"},
+  ]);
+  const [selPro,setSelPro]=useState("pp2");
+  const [mdata,setMdata]=useState({});
+  const [toast,setToast]=useState(null);
+  const tt=useRef();
+
+  /* Computed */
+  const selP=projs.find(p=>p.id===pid)||null;
+  const selI=iid?(selP?.iters.find(i=>i.id===iid)||null):null;
+  const curMd=selI?selI.md:(selP?.md||"");
+  const mdPath=selP?(selP.name.replace(/\s+/g,"-")+"/"+(selI?"Iteration.md":"Project.md")):"";
+  const printer=PS[pidx];
+  const totalI=projs.reduce((s,p)=>s+p.iters.length,0);
+  const totalF=projs.reduce((s,p)=>s+p.iters.reduce((s2,i)=>s2+i.files.length,0),0);
+  const sq=search.toLowerCase().trim();
+  const dispP=sq?projs.filter(p=>p.name.toLowerCase().includes(sq)||p.iters.some(i=>i.label.toLowerCase().includes(sq))):projs;
+  const avTypes=(()=>{if(!selP)return[];const files=selI?selI.files:selP.iters.flatMap(i=>i.files);const ts=new Set(files.map(f=>f.type));return["stl","3mf","gcode"].filter(t=>ts.has(t));})();
+  const filtF=files=>{let f=files;if(ff!=="all")f=f.filter(fi=>fi.type===ff);if(fs.trim())f=f.filter(fi=>fi.name.toLowerCase().includes(fs.toLowerCase()));return f;};
+
+  /* Notify */
+  const notify=m=>{clearTimeout(tt.current);setToast(m);tt.current=setTimeout(()=>setToast(null),3000);};
+
+  /* Navigation */
+  const navP=p=>{setPid(p.id);setIid(null);setEditMd(false);setSelFile(null);setCtxMenu(null);setFf("all");setFs("");};
+  const navI=(pId,it)=>{setPid(pId);setIid(it.id);setEditMd(false);setSelFile(null);setCtxMenu(null);setFf("all");setFs("");};
+
+  /* Save markdown */
+  const saveMd=v=>{
+    if(selI)setProjs(p=>p.map(p=>({...p,iters:p.iters.map(i=>i.id===iid?{...i,md:v}:i)})));
+    else if(selP)setProjs(p=>p.map(p=>p.id===pid?{...p,md:v}:p));
+  };
+
+  /* Update meta */
+  const updMeta=(k,v)=>setProjs(p=>p.map(p=>({...p,iters:p.iters.map(i=>i.id===iid?{...i,meta:{...i.meta,[k]:v}}:i)})));
+
+  /* External file drop */
+  const extDrop=(ev,tPid,tIid)=>{
+    ev.preventDefault();setDrop(null);
+    const files=Array.from(ev.dataTransfer.files);
+    if(!files.length)return;
+    const fl=files.map(f=>({name:f.name,type:f.name.split(".").pop().toLowerCase(),size:(f.size/1048576).toFixed(1)+" MB"}));
+    setPid(tPid);
+    if(tIid){setProjs(p=>p.map(p=>({...p,iters:p.iters.map(i=>i.id===tIid?{...i,files:[...i.files,...fl]}:i)})));setIid(tIid);setSelFile(null);notify(fl.length+" file"+(fl.length!==1?"s":"")+" added");}
+    else{setModal({type:"newIter",pid:tPid,files:fl});setMv("");}
+  };
+
+  /* Reorder */
+  const reorderI=(from,to,pj)=>{
+    if(from===to)return;
+    setProjs(p=>p.map(p=>{
+      if(p.id!==pj)return p;
+      const a=[...p.iters],fi=a.findIndex(i=>i.id===from),ti=a.findIndex(i=>i.id===to);
+      const[m]=a.splice(fi,1);a.splice(ti,0,m);return{...p,iters:a};
+    }));
+    notify("Reordered");
+  };
+  const reorderP=(from,to)=>{
+    if(from===to)return;
+    setProjs(p=>{const a=[...p],fi=a.findIndex(p=>p.id===from),ti=a.findIndex(p=>p.id===to);const[m]=a.splice(fi,1);a.splice(ti,0,m);return a;});
+    notify("Projects reordered");
+  };
+
+  /* CRUD */
+  const createProj=()=>{
+    if(!mv.trim())return;
+    const n=mv.trim(),d=mv2.trim();
+    const ts=new Date().toISOString().slice(0,10);
+    const np={id:"p"+Date.now(),name:n,desc:d,created:ts,md:"# "+n+"\n\n"+(d||"Add a project description.")+"\n\n## Notes\n\n",iters:[]};
+    setProjs(p=>[...p,np]);setPid(np.id);setIid(null);setModal(null);notify("\""+n+"\" created");
+  };
+  const createIter=()=>{
+    if(!mv.trim())return;
+    const p=projs.find(p=>p.id===modal.pid);
+    const vs=p.iters.map(i=>parseFloat(i.ver));
+    const nv=((vs.length?Math.floor(Math.max(...vs))+1:1)).toFixed(1);
+    const ts=new Date().toISOString().slice(0,10);
+    const fl=modal.files||[];
+    const ni={id:"i"+Date.now(),ver:nv,label:mv.trim(),date:ts,meta:{material:"PLA",color:"",weight:""},files:fl,
+      md:"# v"+nv+" — "+mv.trim()+"\n\n**Date:** "+ts+"\n\n## Changes\n\n"+(fl.length?"— Added: "+fl.map(f=>f.name).join(", "):"— (no files attached)")+"\n\n## Notes\n\n"};
+    setProjs(p=>p.map(p=>p.id===modal.pid?{...p,iters:[...p.iters,ni]}:p));
+    setPid(modal.pid);setIid(ni.id);setModal(null);notify("v"+nv+" \""+ni.label+"\" created");
+  };
+  const doRename=()=>{
+    if(!mv.trim())return;
+    if(modal.what==="proj")setProjs(p=>p.map(p=>p.id===modal.id?{...p,name:mv.trim(),desc:mv2.trim()}:p));
+    else setProjs(p=>p.map(p=>({...p,iters:p.iters.map(i=>i.id===modal.id?{...i,label:mv.trim()}:i)})));
+    notify("Renamed");setModal(null);
+  };
+  const doDelete=()=>{
+    if(modal.what==="proj"){
+      const rem=projs.filter(p=>p.id!==modal.id);setProjs(rem);
+      if(pid===modal.id){setPid(rem.length?rem[0].id:null);setIid(null);setSelFile(null);}
+    }else{
+      const pp=projs.find(p=>p.id===modal.pid);
+      const rem=pp?pp.iters.filter(i=>i.id!==modal.id):[];
+      setProjs(p=>p.map(p=>({...p,iters:p.iters.filter(i=>i.id!==modal.id)})));
+      if(iid===modal.id){setIid(rem.length?rem[rem.length-1].id:null);setSelFile(null);}
+    }
+    notify("Deleted");setModal(null);
+  };
+  const dupI=(pjId,it)=>{
+    const p=projs.find(p=>p.id===pjId);
+    const nv=(Math.max(...p.iters.map(i=>parseFloat(i.ver)))+0.1).toFixed(1);
+    const ni={...it,id:"i"+Date.now(),ver:nv,label:it.label+" (copy)",date:new Date().toISOString().slice(0,10)};
+    setProjs(p=>p.map(p=>p.id===pjId?{...p,iters:[...p.iters,ni]}:p));
+    setPid(pjId);setIid(ni.id);setCtxMenu(null);notify("Duplicated as v"+nv);
+  };
+  const removeFile=(itId,fname)=>{
+    setProjs(p=>p.map(p=>({...p,iters:p.iters.map(i=>i.id===itId?{...i,files:i.files.filter(f=>f.name!==fname)}:i)})));
+    if(selFile&&selFile.name===fname)setSelFile(null);setCtxMenu(null);notify(fname+" removed");
+  };
+
+  /* Profile handlers */
+  const openNewProfile=()=>{setMdata({name:"",lh:"0.20",infill:"20",sup:"None",spd:"Normal",mat:"PETG",notes:""});setModal({type:"profile",editId:null});};
+  const openEditProfile=(pro)=>{setMdata({...pro});setModal({type:"profile",editId:pro.id});};
+  const saveProfile=()=>{
+    if(!mdata.name||!mdata.name.trim())return;
+    if(modal.editId){
+      setProfiles(p=>p.map(p=>p.id===modal.editId?{...p,...mdata}:p));
+      notify("Profile updated");
+    }else{
+      const np={...mdata,id:"pp"+Date.now()};
+      setProfiles(p=>[...p,np]);
+      setSelPro(np.id);
+      notify("\""+np.name+"\" profile saved");
+    }
+    setModal(null);
+  };
+  const deleteProfile=(id)=>{
+    setProfiles(p=>p.filter(p=>p.id!==id));
+    if(selPro===id){const rem=profiles.filter(p=>p.id!==id);setSelPro(rem.length?rem[0].id:null);}
+    notify("Profile deleted");
+  };
+
+  /* Context menu */
+  const openCtx=(e,payload)=>{
+    e.preventDefault();
+    setCtxMenu({x:e.clientX,y:e.clientY,...payload});
+  };
+
+  /* Print */
+  const openPrint=()=>{
+    if(!selFile||!selI||!selP)return;
+    setModal({type:"print",file:selFile,ver:selI.ver,label:selI.label,proj:selP.name});
+  };
+
+  /* Circle icon button */
+  const cib=(icon,cls,tip,fn)=>h("button",{className:"cib"+(cls?" "+cls:""),title:tip,"aria-label":tip,onClick:e=>{e.stopPropagation();fn();},onDragStart:e=>e.stopPropagation()},
+    h("i",{className:"ti "+icon,"aria-hidden":"true"}));
+
+  /* Detail row */
+  const DR=(label,val,editable,onCh,custom)=>h("div",{className:"det-row"},
+    h("span",{className:"det-key"},label),
+    custom||(editable
+      ?h("input",{className:"det-inp",value:val,onChange:e=>onCh(e.target.value),style:{flex:1}})
+      :h("span",{style:{fontSize:12,color:"var(--t1)",flex:1}},val)));
+
+  /* ── File tree ── */
+  const FT=(()=>{
+    if(!selP)return h("div",{className:"empty"},h("i",{className:"ti ti-folder","aria-hidden":"true",style:{fontSize:36,color:"var(--t4)"}}),h("span",{style:{fontSize:13}},"Select a project"));
+    if(selI){
+      const files=filtF(selI.files);
+      if(!selI.files.length)return h("div",{className:"empty"},
+        h("i",{className:"ti ti-file-off","aria-hidden":"true",style:{fontSize:32,color:"var(--t4)"}}),
+        h("span",{style:{fontSize:12}},"No files yet"),
+        h("span",{style:{fontSize:11}},"Drop files onto this iteration card to attach them."));
+      if(!files.length)return h("div",{style:{padding:"16px",fontSize:12,color:"var(--t4)"}},"No files match this filter.");
+      return h(React.Fragment,null,...files.map((f,i)=>h("div",{key:i,className:"ft-r"+(selFile&&selFile.name===f.name?" fsel":""),
+        onClick:()=>setSelFile(selFile&&selFile.name===f.name?null:f),
+        onContextMenu:e=>openCtx(e,{kind:"file",file:f,itId:selI.id})},
+        h("i",{className:"ti "+(FI[f.type]||"ti-file"),"aria-hidden":"true",style:{fontSize:13,color:FC[f.type]||"var(--t4)",flexShrink:0}}),
+        h("span",{style:{fontSize:11,color:"var(--t1)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+        h("span",{style:{fontSize:10,color:"var(--t4)",flexShrink:0,marginLeft:6}},f.size))));
+    }
+    if(!selP.iters.length)return h("div",{className:"empty"},
+      h("i",{className:"ti ti-versions","aria-hidden":"true",style:{fontSize:32,color:"var(--t4)"}}),
+      h("span",{style:{fontSize:12}},"No iterations yet"),
+      h("button",{className:"btn-s",style:{marginTop:4},onClick:()=>{setModal({type:"newIter",pid:pid,files:[]});setMv("");}},
+        h("i",{className:"ti ti-plus","aria-hidden":"true",style:{fontSize:12}}),"Create first iteration"));
+    return h(React.Fragment,null,...selP.iters.flatMap(it=>[
+      h("div",{key:"d"+it.id,className:"ft-r"+(iid===it.id?" isel":""),onClick:()=>navI(selP.id,it)},
+        h("i",{className:"ti "+(iid===it.id?"ti-folder-open":"ti-folder"),"aria-hidden":"true",style:{fontSize:13,color:iid===it.id?"var(--acc)":"var(--t4)",flexShrink:0}}),
+        h("span",{style:{fontFamily:"monospace",fontSize:10,fontWeight:700,color:iid===it.id?"var(--acc)":"var(--t3)",flexShrink:0,marginRight:6}},"v"+it.ver),
+        h("span",{style:{fontSize:11,color:iid===it.id?"var(--accT)":"var(--t1)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},it.label),
+        h("span",{style:{fontSize:9,color:"var(--t4)",flexShrink:0}},it.files.length+" f")),
+      ...filtF(it.files).map((f,fi)=>h("div",{key:"df"+it.id+fi,
+        className:"ft-r"+(selFile&&selFile.name===f.name?" fsel":""),style:{paddingLeft:28},
+        onClick:()=>{navI(selP.id,it);setSelFile(selFile&&selFile.name===f.name?null:f);},
+        onContextMenu:e=>openCtx(e,{kind:"file",file:f,itId:it.id})},
+        h("i",{className:"ti "+(FI[f.type]||"ti-file"),"aria-hidden":"true",style:{fontSize:12,color:FC[f.type]||"var(--t4)",flexShrink:0}}),
+        h("span",{style:{fontSize:11,color:"var(--t1)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+        h("span",{style:{fontSize:10,color:"var(--t4)",flexShrink:0,marginLeft:6}},f.size)))
+    ]));
+  })();
+
+  /* ── Details tab ── */
+  const DET=h("div",{style:{flex:1,overflowY:"auto",padding:"16px 18px"}},
+    selI?h(React.Fragment,null,
+      h("div",{style:{marginBottom:20}},
+        h("span",{className:"det-sec-l"},"Iteration"),
+        DR("Version","v"+selI.ver),
+        DR("Label",selI.label),
+        DR("Created",selI.date),
+        DR("Files",selI.files.length+" file"+(selI.files.length!==1?"s":"")+(selI.files.length?" · "+fmtSz(selI.files):"")),
+      ),
+      h("div",null)
+    ):selP?h(React.Fragment,null,
+      h("div",{style:{marginBottom:20}},
+        h("span",{className:"det-sec-l"},"Project"),
+        DR("Name",selP.name),
+        DR("Description",selP.desc||"—"),
+        DR("Created",selP.created),
+        DR("Iterations",selP.iters.length+" iteration"+(selP.iters.length!==1?"s":"")),
+        DR("Files",selP.iters.reduce((s,i)=>s+i.files.length,0)+" files total"),
+      ),
+      selP.iters.length>0&&h("div",null,
+        h("span",{className:"det-sec-l"},"All iterations"),
+        selP.iters.map(it=>{
+          const {bg,c}=ms(it.meta.material);
+          return h("div",{key:it.id,
+            style:{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid var(--bdr)",cursor:"pointer"},
+            onClick:()=>navI(selP.id,it)},
+            h("span",{style:{fontFamily:"monospace",fontSize:10,fontWeight:700,color:"var(--acc)",flexShrink:0,minWidth:30}},"v"+it.ver),
+            h("span",{style:{fontSize:11,color:"var(--t1)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},it.label),
+            h("span",{className:"mat-pill",style:{background:bg,color:c,flexShrink:0}},it.meta.material));
+        })
+      )
+    ):h("div",{className:"empty"},
+      h("i",{className:"ti ti-layout-list","aria-hidden":"true",style:{fontSize:32,color:"var(--t4)"}}),
+      h("span",{style:{fontSize:12}},"Nothing selected"))
+  );
+
+  /* ── Modal ── */
+  const MICONS={newProj:"ti-folder-plus",newIter:"ti-plus",rename:"ti-pencil",confirm:"ti-trash",settings:"ti-settings",print:"ti-printer",profile:"ti-adjustments-horizontal"};
+  const MTITLES={newProj:"New project",newIter:"New iteration",rename:"Rename",confirm:"Confirm delete",settings:"Settings",print:"Send to printer",profile:modal?.editId?"Edit print profile":"New print profile"};
+
+  /* Profile card for print dialog */
+  const ProCard=({pro})=>{
+    const isSel=selPro===pro.id;
+    return h("div",{className:"pro-card"+(isSel?" pro-sel":""),onClick:()=>setSelPro(pro.id)},
+      h("div",{className:"pro-card-acts"},
+        h("button",{className:"cib",title:"Edit",onClick:e=>{e.stopPropagation();openEditProfile(pro);}},h("i",{className:"ti ti-pencil","aria-hidden":"true"})),
+        h("button",{className:"cib del",title:"Delete",onClick:e=>{e.stopPropagation();deleteProfile(pro.id);}},h("i",{className:"ti ti-trash","aria-hidden":"true"}))),
+      h("div",{style:{fontSize:11,fontWeight:700,color:isSel?"var(--accT)":"var(--t1)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},pro.name),
+      h("div",{style:{fontSize:10,color:isSel?"var(--accT)":"var(--t3)",lineHeight:1.5}},pro.lh+"mm · "+pro.mat),
+      h("div",{style:{fontSize:10,color:isSel?"var(--accT)":"var(--t4)",lineHeight:1.5}},pro.infill+"% · "+pro.sup),
+      h("div",{style:{fontSize:10,color:isSel?"var(--accT)":"var(--t4)",lineHeight:1.5}},pro.spd+" speed"));
+  };
+
+  const Modal=modal&&h("div",{className:"overlay",onClick:e=>{if(e.target===e.currentTarget)setModal(null);}},
+    h("div",{className:modal.type==="print"||modal.type==="profile"?"mbox-wide":"mbox"},
+      h("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:20}},
+        h("i",{className:"ti "+MICONS[modal.type],"aria-hidden":"true",style:{fontSize:22,color:"var(--t3)"}}),
+        h("span",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},MTITLES[modal.type])),
+
+      modal.type==="newProj"&&h("div",null,
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Project name"),h("input",{value:mv,autoFocus:true,placeholder:"e.g. Fan duct assembly",onChange:e=>setMv(e.target.value),onKeyDown:e=>e.key==="Enter"&&createProj()})),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Description (optional)"),h("input",{value:mv2,placeholder:"Short description...",onChange:e=>setMv2(e.target.value),onKeyDown:e=>e.key==="Enter"&&createProj()}))),
+
+      modal.type==="newIter"&&h("div",null,
+        modal.files&&modal.files.length>0&&h("div",{className:"mfield"},
+          h("span",{className:"ml"},modal.files.length+" file"+(modal.files.length!==1?"s":"")+" queued"),
+          modal.files.map((f,i)=>h("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:"1px solid var(--bdr)"}},
+            h("i",{className:"ti "+(FI[f.type]||"ti-file"),"aria-hidden":"true",style:{fontSize:12,color:FC[f.type]||"var(--t4)"}}),
+            h("span",{style:{fontSize:11,color:"var(--t1)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+            h("span",{style:{fontSize:10,color:"var(--t4)"}},f.size)))),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Iteration name"),h("input",{value:mv,autoFocus:true,placeholder:"e.g. Wide flange variant",onChange:e=>setMv(e.target.value),onKeyDown:e=>e.key==="Enter"&&createIter()}))),
+
+      modal.type==="rename"&&h("div",null,
+        h("div",{className:"mfield"},h("label",{className:"ml"},modal.what==="proj"?"Project name":"Iteration name"),h("input",{value:mv,autoFocus:true,onChange:e=>setMv(e.target.value),onKeyDown:e=>e.key==="Enter"&&doRename()})),
+        modal.what==="proj"&&h("div",{className:"mfield"},h("label",{className:"ml"},"Description"),h("input",{value:mv2,placeholder:"Short description...",onChange:e=>setMv2(e.target.value)}))),
+
+      modal.type==="confirm"&&h("div",{style:{marginBottom:4}},
+        h("div",{style:{fontSize:14,color:"var(--t1)",marginBottom:8,lineHeight:1.5}},"Delete ",h("strong",null,modal.name),"?"),
+        h("div",{style:{fontSize:12,color:"var(--t3)"}},"This cannot be undone."+(modal.what==="proj"?" All iterations will also be removed.":""))),
+
+      modal.type==="settings"&&h("div",null,
+        h("span",{style:{fontSize:10,fontWeight:700,letterSpacing:".12em",color:"var(--t3)",textTransform:"uppercase",display:"block",marginBottom:14}},"Printer"),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Printer name"),h("input",{value:sett.name,onChange:e=>setSett(s=>({...s,name:e.target.value}))})),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"IP address"),h("input",{value:sett.ip,onChange:e=>setSett(s=>({...s,ip:e.target.value}))})),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"API type"),h("select",{value:sett.api,onChange:e=>setSett(s=>({...s,api:e.target.value}))},h("option",null,"Mainsail"),h("option",null,"Fluidd"))),
+        h("div",{style:{marginBottom:20}},h("button",{className:"btn-s",style:{fontSize:11},onClick:()=>{setPidx(0);notify("Connected to "+sett.name);}},h("i",{className:"ti ti-plug","aria-hidden":"true",style:{fontSize:13}}),"Test connection")),
+        h("span",{style:{fontSize:10,fontWeight:700,letterSpacing:".12em",color:"var(--t3)",textTransform:"uppercase",display:"block",marginBottom:14}},"OrcaSlicer"),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"App path"),h("input",{value:sett.path,onChange:e=>setSett(s=>({...s,path:e.target.value}))}))),
+
+      modal.type==="print"&&h("div",null,
+        /* File info */
+        h("div",{className:"pblock"},
+          [["File",modal.file.name],["Type",modal.file.type.toUpperCase()+" · "+modal.file.size],["Project",modal.proj],["Version","v"+modal.ver+" — "+modal.label]].map(([k,v])=>
+            h("div",{key:k,style:{display:"flex",gap:10,fontSize:12,marginBottom:5}},
+              h("span",{style:{color:"var(--t3)",fontWeight:600,width:54,flexShrink:0,fontSize:10,textTransform:"uppercase"}},k),
+              h("span",{style:{color:"var(--t1)"}},v)))),
+        /* Print Profile section */
+        h("div",{style:{marginBottom:14}},
+          h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
+            h("span",{style:{fontSize:10,fontWeight:700,letterSpacing:".1em",color:"var(--t3)",textTransform:"uppercase"}},"Print Profile"),
+            h("div",{style:{flex:1,height:1,background:"var(--bdr)"}}),
+            h("button",{className:"btn-s",style:{fontSize:10,padding:"3px 9px"},onClick:openNewProfile},
+              h("i",{className:"ti ti-plus","aria-hidden":"true",style:{fontSize:11}}),"New")),
+          profiles.length===0?h("div",{style:{fontSize:12,color:"var(--t4)",padding:"10px 0"}},"No profiles yet — click New to create one.")
+          :h("div",{className:"pro-grid"},
+            ...profiles.map(pro=>h(ProCard,{key:pro.id,pro})))),
+        /* Selected profile summary */
+        (()=>{
+          const pro=profiles.find(p=>p.id===selPro);
+          if(!pro)return null;
+          return h("div",{style:{background:"var(--accL)",border:"1px solid var(--acc)",borderRadius:7,padding:"8px 12px",marginBottom:14,fontSize:11}},
+            h("div",{style:{fontWeight:700,color:"var(--accT)",marginBottom:2}},pro.name),
+            h("div",{style:{color:"var(--accT)",opacity:.85}},pro.lh+"mm layers · "+pro.infill+"% infill · "+pro.sup+" supports · "+pro.spd+" speed · "+pro.mat),
+            pro.notes&&h("div",{style:{color:"var(--accT)",opacity:.7,marginTop:2}},pro.notes));
+        })(),
+        /* Printer info */
+        h("div",{className:"pblock"},
+          [["Printer",sett.name],["Address",sett.ip+" · "+sett.api],["State",printer.connected?printer.label:"Offline"]].map(([k,v])=>
+            h("div",{key:k,style:{display:"flex",gap:10,fontSize:12,marginBottom:5}},
+              h("span",{style:{color:"var(--t3)",fontWeight:600,width:54,flexShrink:0,fontSize:10,textTransform:"uppercase"}},k),
+              h("span",{style:{color:k==="State"&&printer.connected?"var(--grn)":"var(--t1)"}},v))))),
+
+      /* Profile create/edit */
+      modal.type==="profile"&&h("div",null,
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Profile name"),
+          h("input",{value:mdata.name||"",autoFocus:true,placeholder:"e.g. PETG Structural 0.2mm",onChange:e=>setMdata(d=>({...d,name:e.target.value}))})),
+        h("div",{className:"grid2"},
+          h("div",{className:"mfield"},h("label",{className:"ml"},"Layer height (mm)"),
+            h("input",{value:mdata.lh||"",placeholder:"0.20",onChange:e=>setMdata(d=>({...d,lh:e.target.value}))})),
+          h("div",{className:"mfield"},h("label",{className:"ml"},"Infill (%)"),
+            h("input",{value:mdata.infill||"",placeholder:"20",onChange:e=>setMdata(d=>({...d,infill:e.target.value}))}))),
+        h("div",{className:"grid2"},
+          h("div",{className:"mfield"},h("label",{className:"ml"},"Supports"),
+            h("select",{value:mdata.sup||"None",onChange:e=>setMdata(d=>({...d,sup:e.target.value}))},
+              ["None","Normal","Tree","Organic"].map(s=>h("option",{key:s},s)))),
+          h("div",{className:"mfield"},h("label",{className:"ml"},"Speed"),
+            h("select",{value:mdata.spd||"Normal",onChange:e=>setMdata(d=>({...d,spd:e.target.value}))},
+              ["Draft","Normal","Quality","Silent"].map(s=>h("option",{key:s},s))))),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Material"),
+          h("select",{value:mdata.mat||"PETG",onChange:e=>setMdata(d=>({...d,mat:e.target.value}))},
+            MATS.map(m=>h("option",{key:m},m)))),
+        h("div",{className:"mfield"},h("label",{className:"ml"},"Notes (optional)"),
+          h("input",{value:mdata.notes||"",placeholder:"Describe when to use this profile...",onChange:e=>setMdata(d=>({...d,notes:e.target.value}))}))),
+
+      h("div",{className:"mbtns"},
+        h("button",{className:"btn-s",onClick:()=>setModal(null)},modal.type==="settings"?"Close":"Cancel"),
+        modal.type==="newProj"&&h("button",{className:"btn-p",disabled:!mv.trim(),onClick:createProj},"Create project"),
+        modal.type==="newIter"&&h("button",{className:"btn-p",disabled:!mv.trim(),onClick:createIter},"Create iteration"),
+        modal.type==="rename"&&h("button",{className:"btn-p",disabled:!mv.trim(),onClick:doRename},"Save"),
+        modal.type==="confirm"&&h("button",{className:"btn-danger",onClick:doDelete},"Delete"),
+        modal.type==="profile"&&h("button",{className:"btn-p",disabled:!(mdata.name&&mdata.name.trim()),onClick:saveProfile},"Save profile"),
+        modal.type==="print"&&modal.file.type==="gcode"&&h("button",{className:"btn-s",style:{color:"var(--grn)",borderColor:"var(--grn)"},
+          onClick:()=>{const pro=profiles.find(p=>p.id===selPro);setModal(null);notify("Sending to Klipper"+(pro?" with \""+pro.name+"\" profile":"")+"…");}},
+          h("i",{className:"ti ti-send","aria-hidden":"true",style:{fontSize:12}})," Klipper"),
+        modal.type==="print"&&h("button",{className:"btn-p",
+          onClick:()=>{const pro=profiles.find(p=>p.id===selPro);setModal(null);notify("Opening in OrcaSlicer"+(pro?" — "+pro.name:"")+"…");}},
+          h("i",{className:"ti ti-external-link","aria-hidden":"true",style:{fontSize:12}})," OrcaSlicer"))));
+
+  /* ── RENDER ── */
+  return h("div",{style:{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"},onClick:()=>setCtxMenu(null)},
+
+    /* Top bar */
+    h("div",{className:"topbar"},
+      h("div",{className:"metric"},h("span",null,"Projects"),h("span",{className:"n"},projs.length)),
+      h("div",{className:"metric"},h("span",null,"Iterations"),h("span",{className:"n"},totalI)),
+      h("div",{className:"metric"},h("span",null,"Files"),h("span",{className:"n"},totalF)),
+      h("div",{className:"tbr"},
+        searchOpen?h(React.Fragment,null,
+          h("div",{className:"srch",style:{minWidth:240}},
+            h("i",{className:"ti ti-search","aria-hidden":"true",style:{fontSize:13,color:"var(--t4)"}}),
+            h("input",{autoFocus:true,value:search,onChange:e=>setSearch(e.target.value),placeholder:"Search projects and iterations…"})),
+          h("button",{className:"cib",onClick:()=>{setSearchOpen(false);setSearch("");}},h("i",{className:"ti ti-x","aria-hidden":"true"})))
+        :h(React.Fragment,null,
+          h("div",{style:{flex:1}}),
+          h("button",{className:"cib",title:"Search",onClick:()=>setSearchOpen(true)},h("i",{className:"ti ti-search","aria-hidden":"true"})),
+          h("button",{className:"btn-p",onClick:()=>{setMv("");setMv2("");setModal({type:"newProj"});}},h("i",{className:"ti ti-plus","aria-hidden":"true",style:{fontSize:13}}),"New project")))),
+
+    /* Body */
+    h("div",{className:"body"},
+
+      /* Left panel */
+      h("div",{className:"left"},
+        h("div",{className:"sh"},h("span",{className:"sh-l"},"Projects"),h("div",{className:"sh-line"})),
+
+        dispP.length===0&&h("div",{className:"empty",style:{marginTop:40}},
+          h("i",{className:"ti ti-folder-off","aria-hidden":"true",style:{fontSize:40,color:"var(--t4)"}}),
+          h("span",{style:{fontSize:14,color:"var(--t3)",fontWeight:500}},search?"No results for \""+search+"\".":"No projects yet."),
+          !search&&h("button",{className:"btn-p",style:{marginTop:4},onClick:()=>{setMv("");setMv2("");setModal({type:"newProj"});}},h("i",{className:"ti ti-plus","aria-hidden":"true",style:{fontSize:14}}),"Create first project")),
+
+        dispP.map(proj=>{
+          const isSel=proj.id===pid;
+          return h("div",{key:proj.id,style:{marginBottom:14},
+            onDragOver:e=>{if(dragPid&&dragPid!==proj.id){e.preventDefault();setDragPOv(proj.id);}},
+            onDragLeave:()=>setDragPOv(null),
+            onDrop:e=>{if(dragPid&&dragPid!==proj.id){e.preventDefault();reorderP(dragPid,proj.id);}setDragPid(null);setDragPOv(null);},
+            style:{borderTop:dragPOv===proj.id?"2px solid var(--acc)":"2px solid transparent",borderRadius:10,transition:"border-color .1s"}},
+
+            h("div",{style:{display:"flex",alignItems:"center",gap:7,overflowX:"auto",paddingBottom:4}},
+
+              /* Project card */
+              h("div",{className:"card"+(isSel&&!iid?" sel":"")+(drop===("p"+proj.id)?" over":""),draggable:true,
+                style:{width:142,height:84,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"center",gap:3},
+                title:"Click to view · Drag to reorder",onClick:()=>navP(proj),
+                onDragStart:e=>{e.dataTransfer.effectAllowed="move";setDragPid(proj.id);},
+                onDragEnd:()=>{setDragPid(null);setDragPOv(null);},
+                onDragOver:e=>{if(!dragPid&&!dragId){e.preventDefault();setDrop("p"+proj.id);}},
+                onDragLeave:()=>setDrop(null),
+                onDrop:e=>{if(!dragPid&&!dragId)extDrop(e,proj.id,null);setDrop(null);}},
+                h("span",{className:"cbadge"},proj.iters.length),
+                h("div",{style:{fontSize:12,fontWeight:700,lineHeight:1.3,color:isSel&&!iid?"var(--accT)":"var(--t1)",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden",paddingRight:28}},proj.name),
+                h("div",{style:{fontSize:10,color:isSel&&!iid?"var(--accT)":"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.4}},proj.desc),
+                h("div",{className:"card-acts",onDragStart:e=>e.stopPropagation(),onClick:e=>e.stopPropagation()},
+                  cib("ti-pencil","","Rename",()=>{setMv(proj.name);setMv2(proj.desc||"");setModal({type:"rename",what:"proj",id:proj.id});}),
+                  cib("ti-trash","del","Delete",()=>setModal({type:"confirm",what:"proj",id:proj.id,name:proj.name})))),
+
+              h("span",{style:{color:"var(--t4)",fontSize:13,flexShrink:0,paddingBottom:2}},"›"),
+
+              /* Iteration cards */
+              ...proj.iters.map(it=>{
+                const thisSel=it.id===iid&&isSel;
+                const isOver=(dragOv===it.id&&dragId!==it.id)||(drop===("i"+it.id));
+                return h("div",{key:it.id,className:"card ctr grab"+(thisSel?" sel":"")+(isOver?" over":"")+(dragId===it.id?" dim":""),draggable:true,style:{width:94,height:84},
+                  title:"Click · Right-click for more · Drag to reorder",
+                  onClick:()=>navI(proj.id,it),onContextMenu:e=>openCtx(e,{kind:"iter",it,projId:proj.id}),
+                  onDragStart:e=>{e.dataTransfer.effectAllowed="move";setDragId(it.id);setPid(proj.id);},
+                  onDragEnd:()=>{setDragId(null);setDragOv(null);setDrop(null);},
+                  onDragOver:e=>{e.preventDefault();dragId?setDragOv(it.id):setDrop("i"+it.id);},
+                  onDragLeave:()=>{setDragOv(null);setDrop(null);},
+                  onDrop:e=>{e.preventDefault();if(dragId){const sp=projs.find(p=>p.iters.some(i=>i.id===dragId));if(sp&&sp.id===proj.id)reorderI(dragId,it.id,proj.id);}else if(!dragPid)extDrop(e,proj.id,it.id);setDrop(null);}},
+                  h("div",{style:{fontFamily:"monospace",fontSize:18,fontWeight:800,lineHeight:1,color:thisSel?"var(--accT)":"var(--t1)",letterSpacing:"-.02em"}},"v"+it.ver),
+                  h("div",{style:{fontSize:9,lineHeight:1.3,color:thisSel?"var(--accT)":"var(--t3)",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden",width:"100%",fontWeight:500}},it.label),
+                  h("div",{className:"card-acts",onDragStart:e=>e.stopPropagation(),onClick:e=>e.stopPropagation()},
+                    cib("ti-pencil","","Rename",()=>{setMv(it.label);setModal({type:"rename",what:"iter",id:it.id,pid:proj.id});}),
+                    cib("ti-trash","del","Delete",()=>setModal({type:"confirm",what:"iter",id:it.id,pid:proj.id,name:it.label}))));
+              }),
+
+              /* New card */
+              h("div",{className:"newcard"+(drop===("n"+proj.id)?" over":""),style:{width:56,height:84},
+                onClick:()=>{setPid(proj.id);setModal({type:"newIter",pid:proj.id,files:[]});setMv("");},
+                onDragOver:e=>{if(!dragPid&&!dragId){e.preventDefault();setDrop("n"+proj.id);}},
+                onDragLeave:()=>setDrop(null),
+                onDrop:e=>{if(!dragPid&&!dragId)extDrop(e,proj.id,null);setDrop(null);}},
+                h("i",{className:"ti ti-plus","aria-hidden":"true",style:{fontSize:20,color:drop===("n"+proj.id)?"var(--acc)":"var(--t4)"}}),
+                h("div",{style:{fontSize:8,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:drop===("n"+proj.id)?"var(--acc)":"var(--t4)"}},"New"))
+            ));
+        })
+      ),
+
+      /* Right panel */
+      h("div",{className:"right"},
+
+        /* Tabs */
+        h("div",{className:"tabs"},
+          ["Notes","Files","Details"].map(t=>h("button",{key:t,className:"tab"+(tab===t.toLowerCase()?" on":""),onClick:()=>setTab(t.toLowerCase())},t))),
+
+        /* Notes tab */
+        tab==="notes"&&h("div",{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}},
+          h("div",{className:"notes-path"},
+            h("i",{className:"ti ti-file-text","aria-hidden":"true",style:{fontSize:12,color:"var(--t4)"}}),
+            h("span",{style:{fontSize:10,fontFamily:"monospace",color:"var(--t3)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},mdPath||"—"),
+            editMd&&h("span",{style:{fontSize:9,padding:"2px 7px",borderRadius:100,background:"var(--ambL)",color:"var(--amb)",fontWeight:700,flexShrink:0}},"EDITING")),
+          editMd?h("textarea",{className:"mdinput",value:curMd,onChange:e=>saveMd(e.target.value)}):
+            h("div",{style:{flex:1,overflowY:"auto",padding:"14px 18px 40px"}},renderMd(curMd)),
+          h("button",{className:"cib"+(editMd?" on":""),title:editMd?"Preview":"Edit",
+            style:{position:"absolute",bottom:12,right:12,width:28,height:28,fontSize:12,boxShadow:"0 1px 4px rgba(0,0,0,.12)"},
+            onClick:()=>setEditMd(v=>!v)},
+            h("i",{className:"ti "+(editMd?"ti-eye":"ti-pencil"),"aria-hidden":"true"}))),
+
+        /* Files tab */
+        tab==="files"&&h("div",{style:{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}},
+          h("div",{style:{padding:"10px 12px 0"}},
+            h("div",{className:"srch"},
+              h("i",{className:"ti ti-search","aria-hidden":"true",style:{fontSize:13,color:"var(--t4)"}}),
+              h("input",{value:fs,onChange:e=>setFs(e.target.value),placeholder:"Search files…"}))),
+          avTypes.length>0&&h("div",{style:{display:"flex",gap:5,padding:"8px 12px 6px",flexWrap:"wrap"}},
+            h("button",{className:"fchip"+(ff==="all"?" on":""),onClick:()=>setFf("all")},"All"),
+            ...avTypes.map(t=>h("button",{key:t,className:"fchip"+(ff===t?" on":""),onClick:()=>setFf(t)},t.toUpperCase()))),
+          h("div",{style:{flex:1,overflowY:"auto",padding:"4px"}},FT),
+          h("div",{style:{padding:"10px 12px",borderTop:"1px solid var(--bdr)",flexShrink:0}},
+            selFile&&h("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:7,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}},selFile.name),
+            h("button",{className:"btn-d",disabled:!selFile,onClick:openPrint},
+              h("i",{className:"ti ti-printer","aria-hidden":"true",style:{fontSize:15}}),
+              selFile?"Print "+selFile.name.split(".").pop().toUpperCase():"Select a file to print"))),
+
+        /* Details tab */
+        tab==="details"&&DET
+      )
+    ),
+
+    /* Modal */
+    Modal,
+
+    /* Context menu */
+    ctxMenu&&h("div",{className:"ctx",style:{left:ctxMenu.x,top:ctxMenu.y},onClick:e=>e.stopPropagation()},
+      ctxMenu.kind==="iter"?h(React.Fragment,null,
+        h("div",{className:"ctx-i",onClick:()=>{setMv(ctxMenu.it.label);setModal({type:"rename",what:"iter",id:ctxMenu.it.id,pid:ctxMenu.projId});setCtxMenu(null);}},h("i",{className:"ti ti-pencil","aria-hidden":"true",style:{fontSize:13,color:"var(--t3)"}}), " Rename"),
+        h("div",{className:"ctx-i",onClick:()=>dupI(ctxMenu.projId,ctxMenu.it)},h("i",{className:"ti ti-copy","aria-hidden":"true",style:{fontSize:13,color:"var(--t3)"}}), " Duplicate"),
+        h("div",{className:"ctx-sep"}),
+        h("div",{className:"ctx-i warn",onClick:()=>{setModal({type:"confirm",what:"iter",id:ctxMenu.it.id,pid:ctxMenu.projId,name:ctxMenu.it.label});setCtxMenu(null);}},h("i",{className:"ti ti-trash","aria-hidden":"true",style:{fontSize:13}})," Delete"))
+      :h(React.Fragment,null,
+        h("div",{className:"ctx-i",onClick:()=>{notify("Opening "+ctxMenu.file.name+"…");setCtxMenu(null);}},h("i",{className:"ti ti-external-link","aria-hidden":"true",style:{fontSize:13,color:"var(--t3)"}}), " Open in Finder"),
+        h("div",{className:"ctx-i",onClick:()=>{notify("Path copied");setCtxMenu(null);}},h("i",{className:"ti ti-copy","aria-hidden":"true",style:{fontSize:13,color:"var(--t3)"}}), " Copy path"),
+        h("div",{className:"ctx-sep"}),
+        h("div",{className:"ctx-i warn",onClick:()=>removeFile(ctxMenu.itId,ctxMenu.file.name)},h("i",{className:"ti ti-trash","aria-hidden":"true",style:{fontSize:13}})," Remove from iteration"))),
+
+    /* Toast */
+    toast&&h("div",{className:"toast"},h("i",{className:"ti ti-check","aria-hidden":"true",style:{fontSize:13}}),toast)
+  );
+}
+
+try{
+  ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+}catch(err){
+  document.getElementById("root").innerHTML=
+    '<div style="padding:24px;color:#E53E3E;font-size:13px;font-family:monospace;background:#FFF5F5;margin:16px;border-radius:8px;border:1px solid #FEB2B2"><strong>Error:</strong> '+err.message+'</div>';
+}
+</script>
+</body>
+</html>
