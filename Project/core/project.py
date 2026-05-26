@@ -319,6 +319,62 @@ def list_project_versions(name):
     return versions
 
 
+def _parse_version_value(version):
+    try:
+        return float(str(version).lstrip("Vv"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_version(value):
+    return f"{value:.1f}"
+
+
+def _version_numbers(name):
+    versions = list_project_versions(name)
+    numbers = []
+    for item in versions:
+        value = _parse_version_value(item.get("version"))
+        if value is not None:
+            numbers.append(value)
+    return numbers
+
+
+def _next_major_version(name):
+    numbers = _version_numbers(name)
+    if not numbers:
+        return "1.0"
+    max_value = max(numbers)
+    return _format_version(float(int(max_value)) + 1.0)
+
+
+def _next_incremental_version(name, step=0.1):
+    numbers = _version_numbers(name)
+    if not numbers:
+        return "1.0"
+    max_value = max(numbers) + step
+    return _format_version(max_value)
+
+
+def list_projects_bundle(include_notes=False):
+    projects = list_projects()
+    bundle = []
+    for proj in projects:
+        name = proj.get("name")
+        if not name:
+            continue
+        project_data = dict(proj)
+        versions = list_project_versions(name)
+        if include_notes:
+            project_data["notes"] = get_project_notes(name)
+            for ver in versions:
+                ver_name = ver.get("version")
+                if ver_name is not None:
+                    ver["notes"] = get_version_notes(name, ver_name)
+        bundle.append({"project": project_data, "versions": versions})
+    return bundle
+
+
 def create_project_version(name, version, label=None, meta=None):
     base_dir = _project_base_dir()
     project_dir = _project_dir(base_dir, name)
@@ -337,6 +393,27 @@ def create_project_version(name, version, label=None, meta=None):
     version_md = _version_notes_path(base_dir, name, version)
     _touch_file(version_md)
     return version_data
+
+
+def create_project_version_auto(name, label=None, meta=None):
+    next_version = _next_major_version(name)
+    return create_project_version(name, next_version, label=label, meta=meta)
+
+
+def duplicate_project_version(name, source_version, step=0.1, label_suffix=" (copy)"):
+    versions = list_project_versions(name)
+    source = None
+    for item in versions:
+        if str(item.get("version")) == str(source_version):
+            source = item
+            break
+    if source is None:
+        return None
+
+    next_version = _next_incremental_version(name, step=step)
+    label = source.get("label") or f"Version {source_version}"
+    meta = source.get("meta") or {}
+    return create_project_version(name, next_version, label=f"{label}{label_suffix}", meta=dict(meta))
 
 
 def update_project_version(name, version, **updates):

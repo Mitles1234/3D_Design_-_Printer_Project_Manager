@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Print Farm Manager</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="shared.css">
   <link rel="stylesheet" href="equipment.css">
 </head>
 <body>
@@ -50,43 +51,43 @@
         <div class="color-grid" id="color-grid"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" type="button" onclick="closeFilamentModal()">Cancel</button>
-        <button class="btn-confirm" type="button" onclick="confirmAddFilament()">Add Spool</button>
+        <button class="button-cancel" type="button" onclick="closeFilamentModal()">Cancel</button>
+        <button class="button-confirm" type="button" onclick="confirmAddFilament()">Add Spool</button>
       </div>
     </div>
   </div>
 
   <div class="layout">
-    <header>
+    <header class="page-header">
       <div class="header-stats">
-        <span>PRINTERS <strong id="stat-printers">0</strong></span>
-        <span>SPOOLS <strong id="stat-spools">0</strong></span>
-        <span>ATTACHED <strong id="stat-attached">0</strong></span>
-        <span>AVAILABLE <strong id="stat-avail">0</strong></span>
+        <span><span class="header-stat-label">PRINTERS</span> <strong id="stat-printers">0</strong></span>
+        <span><span class="header-stat-label">SPOOLS</span> <strong id="stat-spools">0</strong></span>
+        <span><span class="header-stat-label">ATTACHED</span> <strong id="stat-attached">0</strong></span>
+        <span><span class="header-stat-label">AVAILABLE</span> <strong id="stat-avail">0</strong></span>
       </div>
       <div class="header-actions" id="header-actions">
         <div class="header-search" id="printer-search-ui">
-          <div class="srch" id="printer-search-field">
+          <div class="search-field" id="printer-search-field">
             <i class="ti ti-search" aria-hidden="true"></i>
             <input type="text" id="printer-search" placeholder="Search printers..." oninput="setPrinterSearch(this.value)">
           </div>
-          <button class="cib" type="button" id="printer-search-close" title="Close">
+          <button class="icon-button" type="button" id="printer-search-close" title="Close">
             <i class="ti ti-x" aria-hidden="true"></i>
           </button>
         </div>
-        <button class="cib" type="button" id="printer-search-open" title="Search">
-          <i class="ti ti-search" aria-hidden="true"></i>
-        </button>
         <div class="header-message" id="header-message"></div>
-        <button class="btn-p" type="button" id="printer-new" onclick="openPrinterModal()">
+        <button class="button-primary" type="button" id="printer-new" onclick="openPrinterModal()">
           <i class="ti ti-plus" aria-hidden="true"></i>
           New Printer
+        </button>
+        <button class="icon-button search-toggle" type="button" id="printer-search-open" title="Search">
+          <i class="ti ti-search" aria-hidden="true"></i>
         </button>
       </div>
     </header>
     <div class="main">
       <div class="printers-panel">
-        <div class="panel-heading">print farm</div>
+        <div class="panel-heading"><strong>PRINTERS</strong></div>
         <div class="printers-grid" id="printers-grid"></div>
       </div>
       <div class="filaments-panel">
@@ -99,11 +100,11 @@
             <input type="text" class="search-box" id="search-input" placeholder="Search spools..." oninput="renderFilaments()">
           </div>
           <div class="filter-row" id="filter-row">
-            <button class="filter-pill active" data-mat="ALL" onclick="setFilter(this,'ALL')">ALL</button>
-            <button class="filter-pill" data-mat="PLA" onclick="setFilter(this,'PLA')">PLA</button>
-            <button class="filter-pill" data-mat="PETG" onclick="setFilter(this,'PETG')">PETG</button>
-            <button class="filter-pill" data-mat="ABS" onclick="setFilter(this,'ABS')">ABS</button>
-            <button class="filter-pill" data-mat="TPU" onclick="setFilter(this,'TPU')">TPU</button>
+            <button class="filter-chip active" data-mat="ALL" onclick="setFilter(this,'ALL')">ALL</button>
+            <button class="filter-chip" data-mat="PLA" onclick="setFilter(this,'PLA')">PLA</button>
+            <button class="filter-chip" data-mat="PETG" onclick="setFilter(this,'PETG')">PETG</button>
+            <button class="filter-chip" data-mat="ABS" onclick="setFilter(this,'ABS')">ABS</button>
+            <button class="filter-chip" data-mat="TPU" onclick="setFilter(this,'TPU')">TPU</button>
           </div>
         </div>
         <div class="pool-zone" id="pool-zone"
@@ -145,9 +146,9 @@
         <input type="number" class="form-input" id="p-backend" placeholder="7125" min="0">
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" type="button" onclick="closePrinterModal()">Cancel</button>
-        <button class="btn-danger" type="button" id="printer-remove" onclick="removePrinterFromModal()">Remove</button>
-        <button class="btn-confirm" type="button" id="printer-confirm" onclick="confirmPrinterModal()">Add Printer</button>
+        <button class="button-cancel" type="button" onclick="closePrinterModal()">Cancel</button>
+        <button class="button-danger" type="button" id="printer-remove" onclick="removePrinterFromModal()">Remove</button>
+        <button class="button-confirm" type="button" id="printer-confirm" onclick="confirmPrinterModal()">Add Printer</button>
       </div>
     </div>
   </div>

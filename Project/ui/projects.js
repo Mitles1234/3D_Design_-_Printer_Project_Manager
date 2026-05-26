@@ -72,7 +72,7 @@ function parseBold(s) {
     const a = r.indexOf("**"), b = r.indexOf("**", a + 2);
     if (b === -1) { parts.push(r); r = ""; break; }
     if (a > 0) parts.push(r.slice(0, a));
-    parts.push(h("strong", { key: k++, style: { color: "var(--t1)" } }, r.slice(a + 2, b)));
+    parts.push(h("strong", { key: k++, style: { color: "var(--text)" } }, r.slice(a + 2, b)));
     r = r.slice(b + 2);
   }
   if (r) parts.push(r);
@@ -80,15 +80,15 @@ function parseBold(s) {
 }
 
 function renderMd(md) {
-  if (!md) return h("span", { style: { color: "var(--t4)", fontSize: 12 } }, "No content - click edit to start writing.");
+  if (!md) return h("span", { style: { color: "var(--text-faint)", fontSize: 12 } }, "No content - click edit to start writing.");
   return md.split("\n").map((ln, i) => {
-    if (ln.startsWith("# ")) return h("div", { key: i, style: { fontSize: 17, fontWeight: 700, color: "var(--t1)", marginBottom: 8, marginTop: i ? 6 : 0, lineHeight: 1.3 } }, ln.slice(2));
-    if (ln.startsWith("## ")) return h("div", { key: i, style: { fontSize: 9, fontWeight: 700, color: "var(--t3)", marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.1em" } }, ln.slice(3));
+    if (ln.startsWith("# ")) return h("div", { key: i, style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8, marginTop: i ? 6 : 0, lineHeight: 1.3 } }, ln.slice(2));
+    if (ln.startsWith("## ")) return h("div", { key: i, style: { fontSize: 9, fontWeight: 700, color: "var(--text-dim)", marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.1em" } }, ln.slice(3));
     if (ln.startsWith("- ") || ln.startsWith("-- ")) return h("div", { key: i, style: { display: "flex", gap: 8, marginBottom: 3 } },
-      h("span", { style: { color: "var(--t4)", flexShrink: 0, lineHeight: 1.7 } }, "-"),
-      h("span", { style: { fontSize: 12, color: "var(--t2)", lineHeight: 1.7 } }, parseBold(ln.slice(2))));
+      h("span", { style: { color: "var(--text-faint)", flexShrink: 0, lineHeight: 1.7 } }, "-"),
+      h("span", { style: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7 } }, parseBold(ln.slice(2))));
     if (!ln.trim()) return h("div", { key: i, style: { height: 6 } });
-    return h("div", { key: i, style: { fontSize: 12, color: "var(--t2)", lineHeight: 1.7, marginBottom: 2 } }, parseBold(ln));
+    return h("div", { key: i, style: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 2 } }, parseBold(ln));
   });
 }
 
@@ -182,6 +182,32 @@ function fileToBase64(file) {
   });
 }
 
+async function fetchProjectBundle(api) {
+  if (api && typeof api.LIST_PROJECTS_BUNDLE === "function") {
+    const list = await api.LIST_PROJECTS_BUNDLE(false);
+    const bundle = Array.isArray(list) ? list : [];
+    return bundle.map((entry) => ({
+      project: entry?.project || entry,
+      versions: entry?.versions || [],
+    }));
+  }
+
+  const list = await api.LIST_PROJECTS();
+  const projects = Array.isArray(list) ? list : [];
+  const bundle = [];
+  for (const proj of projects) {
+    let versions = [];
+    try {
+      const result = await api.LIST_PROJECT_VERSIONS(proj.name);
+      versions = Array.isArray(result) ? result : [];
+    } catch (error) {
+      versions = [];
+    }
+    bundle.push({ project: proj, versions });
+  }
+  return bundle;
+}
+
 function App() {
   const [projs, setProjs] = useState([]);
   const [pid, setPid] = useState(null);
@@ -233,19 +259,8 @@ function App() {
   const refreshProjects = async (keepSelection, focusName) => {
     try {
       const api = await waitForApi();
-      const list = await api.LIST_PROJECTS();
-      const projects = Array.isArray(list) ? list : [];
-      const loaded = [];
-      for (const proj of projects) {
-        let versions = [];
-        try {
-          const result = await api.LIST_PROJECT_VERSIONS(proj.name);
-          versions = Array.isArray(result) ? result : [];
-        } catch (error) {
-          versions = [];
-        }
-        loaded.push(normalizeProject(proj, versions));
-      }
+      const bundle = await fetchProjectBundle(api);
+      const loaded = bundle.map(({ project, versions }) => normalizeProject(project, versions));
 
       const merged = mergeNotes(loaded, projsRef.current);
       let nextPid = null;
@@ -446,10 +461,7 @@ function App() {
     const n = mv.trim(), d = mv2.trim();
     try {
       const api = await waitForApi();
-      await api.ADD_PROJECT(n);
-      if (d) {
-        await api.UPDATE_PROJECT(n, n, { description: d });
-      }
+      await api.ADD_PROJECT(n, d || null);
       await refreshProjects(false, n);
       setIid(null);
       setModal(null);
@@ -463,21 +475,32 @@ function App() {
     if (!mv.trim()) return;
     const proj = projs.find((p) => p.id === modal.pid);
     if (!proj) return;
-    const vs = proj.iters.map((i) => parseFloat(i.ver)).filter((v) => !Number.isNaN(v));
-    const nv = (vs.length ? Math.floor(Math.max(...vs)) + 1 : 1).toFixed(1);
-    const ts = new Date().toISOString().slice(0, 10);
     const files = modal.files || [];
     try {
       const api = await waitForApi();
-      await api.CREATE_PROJECT_VERSION(proj.name, nv, mv.trim(), { material: "PLA", color: "", weight: "" });
-      if (files.length) {
-        await uploadFiles(proj.name, nv, files);
+      let created = null;
+      if (typeof api.CREATE_PROJECT_VERSION_AUTO === "function") {
+        created = await api.CREATE_PROJECT_VERSION_AUTO(proj.name, mv.trim(), { material: "PLA", color: "", weight: "" });
+      } else {
+        const vs = proj.iters.map((i) => parseFloat(i.ver)).filter((v) => !Number.isNaN(v));
+        const nv = (vs.length ? Math.floor(Math.max(...vs)) + 1 : 1).toFixed(1);
+        created = await api.CREATE_PROJECT_VERSION(proj.name, nv, mv.trim(), { material: "PLA", color: "", weight: "" });
+      }
+      const nextVersion = created?.version || created?.ver || created?.version_number;
+      if (files.length && nextVersion) {
+        await uploadFiles(proj.name, nextVersion, files);
       }
       await refreshProjects(true, proj.name);
       setPid(proj.id);
-      setIid(`v-${proj.id}-${nv}`);
+      if (nextVersion) {
+        setIid(`v-${proj.id}-${nextVersion}`);
+      }
       setModal(null);
-      notify(`v${nv} "${mv.trim()}" created`);
+      if (nextVersion) {
+        notify(`v${nextVersion} "${mv.trim()}" created`);
+      } else {
+        notify("Iteration created");
+      }
     } catch (error) {
       notify("Failed to create version");
     }
@@ -519,13 +542,23 @@ function App() {
   const dupI = async (pjId, it) => {
     const proj = projs.find((p) => p.id === pjId);
     if (!proj) return;
-    const vs = proj.iters.map((i) => parseFloat(i.ver)).filter((v) => !Number.isNaN(v));
-    const nv = (Math.max(...vs) + 0.1).toFixed(1);
     try {
       const api = await waitForApi();
-      await api.CREATE_PROJECT_VERSION(proj.name, nv, `${it.label} (copy)`, { ...it.meta });
+      let created = null;
+      if (typeof api.DUPLICATE_PROJECT_VERSION === "function") {
+        created = await api.DUPLICATE_PROJECT_VERSION(proj.name, it.ver, 0.1);
+      } else {
+        const vs = proj.iters.map((i) => parseFloat(i.ver)).filter((v) => !Number.isNaN(v));
+        const nv = (Math.max(...vs) + 0.1).toFixed(1);
+        created = await api.CREATE_PROJECT_VERSION(proj.name, nv, `${it.label} (copy)`, { ...it.meta });
+      }
+      const nextVersion = created?.version || created?.ver || created?.version_number;
       await refreshProjects(true);
-      notify(`Duplicated as v${nv}`);
+      if (nextVersion) {
+        notify(`Duplicated as v${nextVersion}`);
+      } else {
+        notify("Duplicated iteration");
+      }
     } catch (error) {
       notify("Failed to duplicate");
     }
@@ -582,56 +615,56 @@ function App() {
     setModal({ type: "print", file: selFile, ver: selI.ver, label: selI.label, proj: selP.name });
   };
 
-  const cib = (icon, cls, tip, fn) => h("button", { className: `cib${cls ? " " + cls : ""}`, title: tip, "aria-label": tip, onClick: (e) => { e.stopPropagation(); fn(); }, onDragStart: (e) => e.stopPropagation() },
+  const cib = (icon, cls, tip, fn) => h("button", { className: `icon-button${cls ? " " + cls : ""}`, title: tip, "aria-label": tip, onClick: (e) => { e.stopPropagation(); fn(); }, onDragStart: (e) => e.stopPropagation() },
     h("i", { className: `ti ${icon}`, "aria-hidden": "true" }));
 
-  const DR = (label, val, editable, onCh, custom) => h("div", { className: "det-row" },
-    h("span", { className: "det-key" }, label),
+  const DR = (label, val, editable, onCh, custom) => h("div", { className: "detail-row" },
+    h("span", { className: "detail-key" }, label),
     custom || (editable
-      ? h("input", { className: "det-inp", value: val, onChange: (e) => onCh(e.target.value), style: { flex: 1 } })
-      : h("span", { style: { fontSize: 12, color: "var(--t1)", flex: 1 } }, val)));
+      ? h("input", { className: "detail-input", value: val, onChange: (e) => onCh(e.target.value), style: { flex: 1 } })
+      : h("span", { style: { fontSize: 12, color: "var(--text)", flex: 1 } }, val)));
 
-  const FT = (() => {
-    if (!selP) return h("div", { className: "empty" }, h("i", { className: "ti ti-folder", "aria-hidden": "true", style: { fontSize: 36, color: "var(--t4)" } }), h("span", { style: { fontSize: 13 } }, "Select a project"));
+  const renderFileTree = () => {
+    if (!selP) return h("div", { className: "empty-state" }, h("i", { className: "ti ti-folder", "aria-hidden": "true", style: { fontSize: 36, color: "var(--text-faint)" } }), h("span", { style: { fontSize: 13 } }, "Select a project"));
     if (selI) {
       const files = filtF(selI.files);
-      if (!selI.files.length) return h("div", { className: "empty" },
-        h("i", { className: "ti ti-file-off", "aria-hidden": "true", style: { fontSize: 32, color: "var(--t4)" } }),
+      if (!selI.files.length) return h("div", { className: "empty-state" },
+        h("i", { className: "ti ti-file-off", "aria-hidden": "true", style: { fontSize: 32, color: "var(--text-faint)" } }),
         h("span", { style: { fontSize: 12 } }, "No files yet"),
         h("span", { style: { fontSize: 11 } }, "Drop files onto this iteration card to attach them."));
-      if (!files.length) return h("div", { style: { padding: "16px", fontSize: 12, color: "var(--t4)" } }, "No files match this filter.");
-      return h(React.Fragment, null, ...files.map((f, i) => h("div", { key: i, className: `ft-r${selFile && selFile.name === f.name ? " fsel" : ""}`,
+      if (!files.length) return h("div", { style: { padding: "16px", fontSize: 12, color: "var(--text-faint)" } }, "No files match this filter.");
+      return h(React.Fragment, null, ...files.map((f, i) => h("div", { key: i, className: `file-tree-row${selFile && selFile.name === f.name ? " is-selected" : ""}`,
         onClick: () => setSelFile(selFile && selFile.name === f.name ? null : f),
         onContextMenu: (e) => openCtx(e, { kind: "file", file: f, itId: selI.id }) },
-        h("i", { className: `ti ${FI[f.type] || "ti-file"}`, "aria-hidden": "true", style: { fontSize: 13, color: FC[f.type] || "var(--t4)", flexShrink: 0 } }),
-        h("span", { style: { fontSize: 11, color: "var(--t1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name),
-        h("span", { style: { fontSize: 10, color: "var(--t4)", flexShrink: 0, marginLeft: 6 } }, f.size))));
+        h("i", { className: `ti ${FI[f.type] || "ti-file"}`, "aria-hidden": "true", style: { fontSize: 13, color: FC[f.type] || "var(--text-faint)", flexShrink: 0 } }),
+        h("span", { style: { fontSize: 11, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name),
+        h("span", { style: { fontSize: 10, color: "var(--text-faint)", flexShrink: 0, marginLeft: 6 } }, f.size))));
     }
-    if (!selP.iters.length) return h("div", { className: "empty" },
-      h("i", { className: "ti ti-versions", "aria-hidden": "true", style: { fontSize: 32, color: "var(--t4)" } }),
+    if (!selP.iters.length) return h("div", { className: "empty-state" },
+      h("i", { className: "ti ti-versions", "aria-hidden": "true", style: { fontSize: 32, color: "var(--text-faint)" } }),
       h("span", { style: { fontSize: 12 } }, "No iterations yet"),
-      h("button", { className: "btn-s", style: { marginTop: 4 }, onClick: () => { setModal({ type: "newIter", pid: pid, files: [] }); setMv(""); } },
+      h("button", { className: "button-secondary", style: { marginTop: 4 }, onClick: () => { setModal({ type: "newIter", pid: pid, files: [] }); setMv(""); } },
         h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 12 } }), "Create first iteration"));
     return h(React.Fragment, null, ...selP.iters.flatMap((it) => [
-      h("div", { key: `d${it.id}`, className: `ft-r${iid === it.id ? " isel" : ""}`, onClick: () => navI(selP.id, it) },
-        h("i", { className: `ti ${iid === it.id ? "ti-folder-open" : "ti-folder"}`, "aria-hidden": "true", style: { fontSize: 13, color: iid === it.id ? "var(--acc)" : "var(--t4)", flexShrink: 0 } }),
-        h("span", { style: { fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: iid === it.id ? "var(--acc)" : "var(--t3)", flexShrink: 0, marginRight: 6 } }, `v${it.ver}`),
-        h("span", { style: { fontSize: 11, color: iid === it.id ? "var(--accT)" : "var(--t1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, it.label),
-        h("span", { style: { fontSize: 9, color: "var(--t4)", flexShrink: 0 } }, `${it.files.length} f`)),
+      h("div", { key: `d${it.id}`, className: `file-tree-row${iid === it.id ? " is-selected" : ""}`, onClick: () => navI(selP.id, it) },
+        h("i", { className: `ti ${iid === it.id ? "ti-folder-open" : "ti-folder"}`, "aria-hidden": "true", style: { fontSize: 13, color: iid === it.id ? "var(--amber)" : "var(--text-faint)", flexShrink: 0 } }),
+        h("span", { style: { fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: iid === it.id ? "var(--amber)" : "var(--text-dim)", flexShrink: 0, marginRight: 6 } }, `v${it.ver}`),
+        h("span", { style: { fontSize: 11, color: iid === it.id ? "var(--amber-dim)" : "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, it.label),
+        h("span", { style: { fontSize: 9, color: "var(--text-faint)", flexShrink: 0 } }, `${it.files.length} f`)),
       ...filtF(it.files).map((f, fi) => h("div", { key: `df${it.id}${fi}`,
-        className: `ft-r${selFile && selFile.name === f.name ? " fsel" : ""}`, style: { paddingLeft: 28 },
+        className: `file-tree-row${selFile && selFile.name === f.name ? " is-selected" : ""}`, style: { paddingLeft: 28 },
         onClick: () => { navI(selP.id, it); setSelFile(selFile && selFile.name === f.name ? null : f); },
         onContextMenu: (e) => openCtx(e, { kind: "file", file: f, itId: it.id }) },
-        h("i", { className: `ti ${FI[f.type] || "ti-file"}`, "aria-hidden": "true", style: { fontSize: 12, color: FC[f.type] || "var(--t4)", flexShrink: 0 } }),
-        h("span", { style: { fontSize: 11, color: "var(--t1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name),
-        h("span", { style: { fontSize: 10, color: "var(--t4)", flexShrink: 0, marginLeft: 6 } }, f.size)))
+        h("i", { className: `ti ${FI[f.type] || "ti-file"}`, "aria-hidden": "true", style: { fontSize: 12, color: FC[f.type] || "var(--text-faint)", flexShrink: 0 } }),
+        h("span", { style: { fontSize: 11, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name),
+        h("span", { style: { fontSize: 10, color: "var(--text-faint)", flexShrink: 0, marginLeft: 6 } }, f.size)))
     ]));
-  })();
+  };
 
-  const DET = h("div", { style: { flex: 1, overflowY: "auto", padding: "16px 18px" } },
+  const renderDetails = () => h("div", { style: { flex: 1, overflowY: "auto", padding: "16px 18px" } },
     selI ? h(React.Fragment, null,
       h("div", { style: { marginBottom: 20 } },
-        h("span", { className: "det-sec-l" }, "Iteration"),
+        h("span", { className: "detail-section-label" }, "Iteration"),
         DR("Version", `v${selI.ver}`),
         DR("Label", selI.label),
         DR("Created", selI.date),
@@ -639,24 +672,24 @@ function App() {
       h("div", null)
     ) : selP ? h(React.Fragment, null,
       h("div", { style: { marginBottom: 20 } },
-        h("span", { className: "det-sec-l" }, "Project"),
+        h("span", { className: "detail-section-label" }, "Project"),
         DR("Name", selP.name),
         DR("Description", selP.desc || "-"),
         DR("Created", selP.created),
         DR("Iterations", `${selP.iters.length} iteration${selP.iters.length !== 1 ? "s" : ""}`),
         DR("Files", `${selP.iters.reduce((s, i) => s + i.files.length, 0)} files total`)),
       selP.iters.length > 0 && h("div", null,
-        h("span", { className: "det-sec-l" }, "All iterations"),
+        h("span", { className: "detail-section-label" }, "All iterations"),
         selP.iters.map((it) => {
           const { bg, c } = ms(it.meta.material);
-          return h("div", { key: it.id, style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--bdr)", cursor: "pointer" }, onClick: () => navI(selP.id, it) },
-            h("span", { style: { fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "var(--acc)", flexShrink: 0, minWidth: 30 } }, `v${it.ver}`),
-            h("span", { style: { fontSize: 11, color: "var(--t1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, it.label),
-            h("span", { className: "mat-pill", style: { background: bg, color: c, flexShrink: 0 } }, it.meta.material || ""));
+          return h("div", { key: it.id, style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }, onClick: () => navI(selP.id, it) },
+            h("span", { style: { fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "var(--amber)", flexShrink: 0, minWidth: 30 } }, `v${it.ver}`),
+            h("span", { style: { fontSize: 11, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, it.label),
+            h("span", { className: "material-pill", style: { background: bg, color: c, flexShrink: 0 } }, it.meta.material || ""));
         })
       )
-    ) : h("div", { className: "empty" },
-      h("i", { className: "ti ti-layout-list", "aria-hidden": "true", style: { fontSize: 32, color: "var(--t4)" } }),
+    ) : h("div", { className: "empty-state" },
+      h("i", { className: "ti ti-layout-list", "aria-hidden": "true", style: { fontSize: 32, color: "var(--text-faint)" } }),
       h("span", { style: { fontSize: 12 } }, "Nothing selected"))
   );
 
@@ -665,244 +698,261 @@ function App() {
 
   const ProCard = ({ pro }) => {
     const isSel = selPro === pro.id;
-    return h("div", { className: `pro-card${isSel ? " pro-sel" : ""}`, onClick: () => setSelPro(pro.id) },
-      h("div", { className: "pro-card-acts" },
-        h("button", { className: "cib", title: "Edit", onClick: (e) => { e.stopPropagation(); openEditProfile(pro); } }, h("i", { className: "ti ti-pencil", "aria-hidden": "true" })),
-        h("button", { className: "cib del", title: "Delete", onClick: (e) => { e.stopPropagation(); deleteProfile(pro.id); } }, h("i", { className: "ti ti-trash", "aria-hidden": "true" }))),
-      h("div", { style: { fontSize: 11, fontWeight: 700, color: isSel ? "var(--accT)" : "var(--t1)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, pro.name),
-      h("div", { style: { fontSize: 10, color: isSel ? "var(--accT)" : "var(--t3)", lineHeight: 1.5 } }, `${pro.lh}mm - ${pro.mat}`),
-      h("div", { style: { fontSize: 10, color: isSel ? "var(--accT)" : "var(--t4)", lineHeight: 1.5 } }, `${pro.infill}% - ${pro.sup}`),
-      h("div", { style: { fontSize: 10, color: isSel ? "var(--accT)" : "var(--t4)", lineHeight: 1.5 } }, `${pro.spd} speed`));
+    return h("div", { className: `profile-card${isSel ? " is-selected" : ""}`, onClick: () => setSelPro(pro.id) },
+      h("div", { className: "profile-card-actions" },
+        h("button", { className: "icon-button", title: "Edit", onClick: (e) => { e.stopPropagation(); openEditProfile(pro); } }, h("i", { className: "ti ti-pencil", "aria-hidden": "true" })),
+        h("button", { className: "icon-button is-danger", title: "Delete", onClick: (e) => { e.stopPropagation(); deleteProfile(pro.id); } }, h("i", { className: "ti ti-trash", "aria-hidden": "true" }))),
+      h("div", { style: { fontSize: 11, fontWeight: 700, color: isSel ? "var(--amber-dim)" : "var(--text)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, pro.name),
+      h("div", { style: { fontSize: 10, color: isSel ? "var(--amber-dim)" : "var(--text-dim)", lineHeight: 1.5 } }, `${pro.lh}mm - ${pro.mat}`),
+      h("div", { style: { fontSize: 10, color: isSel ? "var(--amber-dim)" : "var(--text-faint)", lineHeight: 1.5 } }, `${pro.infill}% - ${pro.sup}`),
+      h("div", { style: { fontSize: 10, color: isSel ? "var(--amber-dim)" : "var(--text-faint)", lineHeight: 1.5 } }, `${pro.spd} speed`));
   };
 
-  const Modal = modal && h("div", { className: "overlay", onClick: (e) => { if (e.target === e.currentTarget) setModal(null); } },
-    h("div", { className: modal.type === "print" || modal.type === "profile" ? "mbox-wide" : "mbox" },
+  const renderModal = () => modal && h("div", { className: "modal-backdrop", onClick: (e) => { if (e.target === e.currentTarget) setModal(null); } },
+    h("div", { className: `modal${modal.type === "print" || modal.type === "profile" ? " modal-wide" : ""}` },
       h("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 20 } },
-        h("i", { className: `ti ${MICONS[modal.type]}`, "aria-hidden": "true", style: { fontSize: 22, color: "var(--t3)" } }),
-        h("span", { style: { fontSize: 16, fontWeight: 700, color: "var(--t1)" } }, MTITLES[modal.type])),
+        h("i", { className: `ti ${MICONS[modal.type]}`, "aria-hidden": "true", style: { fontSize: 22, color: "var(--text-dim)" } }),
+        h("span", { style: { fontSize: 16, fontWeight: 700, color: "var(--text)" } }, MTITLES[modal.type])),
 
       modal.type === "newProj" && h("div", null,
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Project name"), h("input", { value: mv, autoFocus: true, placeholder: "e.g. Fan duct assembly", onChange: (e) => setMv(e.target.value), onKeyDown: (e) => e.key === "Enter" && createProj() })),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Description (optional)"), h("input", { value: mv2, placeholder: "Short description...", onChange: (e) => setMv2(e.target.value), onKeyDown: (e) => e.key === "Enter" && createProj() }))),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Project name"), h("input", { value: mv, autoFocus: true, placeholder: "e.g. Fan duct assembly", onChange: (e) => setMv(e.target.value), onKeyDown: (e) => e.key === "Enter" && createProj() })),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Description (optional)"), h("input", { value: mv2, placeholder: "Short description...", onChange: (e) => setMv2(e.target.value), onKeyDown: (e) => e.key === "Enter" && createProj() }))),
 
       modal.type === "newIter" && h("div", null,
-        modal.files && modal.files.length > 0 && h("div", { className: "mfield" },
-          h("span", { className: "ml" }, `${modal.files.length} file${modal.files.length !== 1 ? "s" : ""} queued`),
-          modal.files.map((f, i) => h("div", { key: i, style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px solid var(--bdr)" } },
-            h("i", { className: `ti ${FI[fileTypeFromName(f.name)] || "ti-file"}`, "aria-hidden": "true", style: { fontSize: 12, color: FC[fileTypeFromName(f.name)] || "var(--t4)" } }),
-            h("span", { style: { fontSize: 11, color: "var(--t1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name),
-            h("span", { style: { fontSize: 10, color: "var(--t4)" } }, formatSize(f.size)))))),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Iteration name"), h("input", { value: mv, autoFocus: true, placeholder: "e.g. Wide flange variant", onChange: (e) => setMv(e.target.value), onKeyDown: (e) => e.key === "Enter" && createIter() }))),
+        modal.files && modal.files.length > 0 && h("div", { className: "form-group" },
+          h("span", { className: "form-label" }, `${modal.files.length} file${modal.files.length !== 1 ? "s" : ""} queued`),
+          modal.files.map((f, i) => h("div", { key: i, style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px solid var(--border)" } },
+            h("i", { className: `ti ${FI[fileTypeFromName(f.name)] || "ti-file"}`, "aria-hidden": "true", style: { fontSize: 12, color: FC[fileTypeFromName(f.name)] || "var(--text-faint)" } }),
+            h("span", { style: { fontSize: 11, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name),
+            h("span", { style: { fontSize: 10, color: "var(--text-faint)" } }, formatSize(f.size)))))),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Iteration name"), h("input", { value: mv, autoFocus: true, placeholder: "e.g. Wide flange variant", onChange: (e) => setMv(e.target.value), onKeyDown: (e) => e.key === "Enter" && createIter() }))),
 
       modal.type === "rename" && h("div", null,
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, modal.what === "proj" ? "Project name" : "Iteration name"), h("input", { value: mv, autoFocus: true, onChange: (e) => setMv(e.target.value), onKeyDown: (e) => e.key === "Enter" && doRename() })),
-        modal.what === "proj" && h("div", { className: "mfield" }, h("label", { className: "ml" }, "Description"), h("input", { value: mv2, placeholder: "Short description...", onChange: (e) => setMv2(e.target.value) }))),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, modal.what === "proj" ? "Project name" : "Iteration name"), h("input", { value: mv, autoFocus: true, onChange: (e) => setMv(e.target.value), onKeyDown: (e) => e.key === "Enter" && doRename() })),
+        modal.what === "proj" && h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Description"), h("input", { value: mv2, placeholder: "Short description...", onChange: (e) => setMv2(e.target.value) }))),
 
       modal.type === "confirm" && h("div", { style: { marginBottom: 4 } },
-        h("div", { style: { fontSize: 14, color: "var(--t1)", marginBottom: 8, lineHeight: 1.5 } }, "Delete ", h("strong", null, modal.name), "?"),
-        h("div", { style: { fontSize: 12, color: "var(--t3)" } }, "This cannot be undone.", modal.what === "proj" ? " All iterations will also be removed." : "")),
+        h("div", { style: { fontSize: 14, color: "var(--text)", marginBottom: 8, lineHeight: 1.5 } }, "Delete ", h("strong", null, modal.name), "?"),
+        h("div", { style: { fontSize: 12, color: "var(--text-dim)" } }, "This cannot be undone.", modal.what === "proj" ? " All iterations will also be removed." : "")),
 
       modal.type === "settings" && h("div", null,
-        h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "var(--t3)", textTransform: "uppercase", display: "block", marginBottom: 14 } }, "Printer"),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Printer name"), h("input", { value: sett.name, onChange: (e) => setSett((s) => ({ ...s, name: e.target.value })) })),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "IP address"), h("input", { value: sett.ip, onChange: (e) => setSett((s) => ({ ...s, ip: e.target.value })) })),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "API type"), h("select", { value: sett.api, onChange: (e) => setSett((s) => ({ ...s, api: e.target.value })) }, h("option", null, "Mainsail"), h("option", null, "Fluidd"))),
-        h("div", { style: { marginBottom: 20 } }, h("button", { className: "btn-s", style: { fontSize: 11 }, onClick: () => { setPidx(0); notify(`Connected to ${sett.name}`); } }, h("i", { className: "ti ti-plug", "aria-hidden": "true", style: { fontSize: 13 } }), "Test connection")),
-        h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "var(--t3)", textTransform: "uppercase", display: "block", marginBottom: 14 } }, "OrcaSlicer"),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "App path"), h("input", { value: sett.path, onChange: (e) => setSett((s) => ({ ...s, path: e.target.value })) }))),
+        h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "var(--text-dim)", textTransform: "uppercase", display: "block", marginBottom: 14 } }, "Printer"),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Printer name"), h("input", { value: sett.name, onChange: (e) => setSett((s) => ({ ...s, name: e.target.value })) })),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "IP address"), h("input", { value: sett.ip, onChange: (e) => setSett((s) => ({ ...s, ip: e.target.value })) })),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "API type"), h("select", { value: sett.api, onChange: (e) => setSett((s) => ({ ...s, api: e.target.value })) }, h("option", null, "Mainsail"), h("option", null, "Fluidd"))),
+        h("div", { style: { marginBottom: 20 } }, h("button", { className: "button-secondary", style: { fontSize: 11 }, onClick: () => { setPidx(0); notify(`Connected to ${sett.name}`); } }, h("i", { className: "ti ti-plug", "aria-hidden": "true", style: { fontSize: 13 } }), "Test connection")),
+        h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "var(--text-dim)", textTransform: "uppercase", display: "block", marginBottom: 14 } }, "OrcaSlicer"),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "App path"), h("input", { value: sett.path, onChange: (e) => setSett((s) => ({ ...s, path: e.target.value })) }))),
 
       modal.type === "print" && h("div", null,
-        h("div", { className: "pblock" },
+        h("div", { className: "summary-block" },
           [["File", modal.file.name], ["Type", `${modal.file.type.toUpperCase()} - ${modal.file.size}`], ["Project", modal.proj], ["Version", `v${modal.ver} - ${modal.label}`]].map(([k, v]) =>
             h("div", { key: k, style: { display: "flex", gap: 10, fontSize: 12, marginBottom: 5 } },
-              h("span", { style: { color: "var(--t3)", fontWeight: 600, width: 54, flexShrink: 0, fontSize: 10, textTransform: "uppercase" } }, k),
-              h("span", { style: { color: "var(--t1)" } }, v)))),
+              h("span", { style: { color: "var(--text-dim)", fontWeight: 600, width: 54, flexShrink: 0, fontSize: 10, textTransform: "uppercase" } }, k),
+              h("span", { style: { color: "var(--text)" } }, v)))),
         h("div", { style: { marginBottom: 14 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 } },
-            h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: "var(--t3)", textTransform: "uppercase" } }, "Print Profile"),
-            h("div", { style: { flex: 1, height: 1, background: "var(--bdr)" } }),
-            h("button", { className: "btn-s", style: { fontSize: 10, padding: "3px 9px" }, onClick: openNewProfile },
+            h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: "var(--text-dim)", textTransform: "uppercase" } }, "Print Profile"),
+            h("div", { style: { flex: 1, height: 1, background: "var(--border)" } }),
+            h("button", { className: "button-secondary", style: { fontSize: 10, padding: "3px 9px" }, onClick: openNewProfile },
               h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 11 } }), "New")),
-          profiles.length === 0 ? h("div", { style: { fontSize: 12, color: "var(--t4)", padding: "10px 0" } }, "No profiles yet - click New to create one.")
-            : h("div", { className: "pro-grid" }, ...profiles.map((pro) => h(ProCard, { key: pro.id, pro })))),
+          profiles.length === 0 ? h("div", { style: { fontSize: 12, color: "var(--text-faint)", padding: "10px 0" } }, "No profiles yet - click New to create one.")
+            : h("div", { className: "profile-grid" }, ...profiles.map((pro) => h(ProCard, { key: pro.id, pro })))),
         (() => {
           const pro = profiles.find((p) => p.id === selPro);
           if (!pro) return null;
-          return h("div", { style: { background: "var(--accL)", border: "1px solid var(--acc)", borderRadius: 7, padding: "8px 12px", marginBottom: 14, fontSize: 11 } },
-            h("div", { style: { fontWeight: 700, color: "var(--accT)", marginBottom: 2 } }, pro.name),
-            h("div", { style: { color: "var(--accT)", opacity: .85 } }, `${pro.lh}mm layers - ${pro.infill}% infill - ${pro.sup} supports - ${pro.spd} speed - ${pro.mat}`),
-            pro.notes && h("div", { style: { color: "var(--accT)", opacity: .7, marginTop: 2 } }, pro.notes));
+          return h("div", { style: { background: "var(--amber-glow)", border: "1px solid var(--amber)", borderRadius: 7, padding: "8px 12px", marginBottom: 14, fontSize: 11 } },
+            h("div", { style: { fontWeight: 700, color: "var(--amber-dim)", marginBottom: 2 } }, pro.name),
+            h("div", { style: { color: "var(--amber-dim)", opacity: .85 } }, `${pro.lh}mm layers - ${pro.infill}% infill - ${pro.sup} supports - ${pro.spd} speed - ${pro.mat}`),
+            pro.notes && h("div", { style: { color: "var(--amber-dim)", opacity: .7, marginTop: 2 } }, pro.notes));
         })(),
-        h("div", { className: "pblock" },
+        h("div", { className: "summary-block" },
           [["Printer", sett.name], ["Address", `${sett.ip} - ${sett.api}`], ["State", printer.connected ? printer.label : "Offline"]].map(([k, v]) =>
             h("div", { key: k, style: { display: "flex", gap: 10, fontSize: 12, marginBottom: 5 } },
-              h("span", { style: { color: "var(--t3)", fontWeight: 600, width: 54, flexShrink: 0, fontSize: 10, textTransform: "uppercase" } }, k),
-              h("span", { style: { color: k === "State" && printer.connected ? "var(--grn)" : "var(--t1)" } }, v)))),
+              h("span", { style: { color: "var(--text-dim)", fontWeight: 600, width: 54, flexShrink: 0, fontSize: 10, textTransform: "uppercase" } }, k),
+              h("span", { style: { color: k === "State" && printer.connected ? "var(--green)" : "var(--text)" } }, v)))),
 
       modal.type === "profile" && h("div", null,
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Profile name"),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Profile name"),
           h("input", { value: mdata.name || "", autoFocus: true, placeholder: "e.g. PETG Structural 0.2mm", onChange: (e) => setMdata((d) => ({ ...d, name: e.target.value })) })),
-        h("div", { className: "grid2" },
-          h("div", { className: "mfield" }, h("label", { className: "ml" }, "Layer height (mm)"),
+        h("div", { className: "two-column-grid" },
+          h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Layer height (mm)"),
             h("input", { value: mdata.lh || "", placeholder: "0.20", onChange: (e) => setMdata((d) => ({ ...d, lh: e.target.value })) })),
-          h("div", { className: "mfield" }, h("label", { className: "ml" }, "Infill (%)"),
+          h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Infill (%)"),
             h("input", { value: mdata.infill || "", placeholder: "20", onChange: (e) => setMdata((d) => ({ ...d, infill: e.target.value })) }))),
-        h("div", { className: "grid2" },
-          h("div", { className: "mfield" }, h("label", { className: "ml" }, "Supports"),
+        h("div", { className: "two-column-grid" },
+          h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Supports"),
             h("select", { value: mdata.sup || "None", onChange: (e) => setMdata((d) => ({ ...d, sup: e.target.value })) },
               ["None", "Normal", "Tree", "Organic"].map((s) => h("option", { key: s }, s)))),
-          h("div", { className: "mfield" }, h("label", { className: "ml" }, "Speed"),
+          h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Speed"),
             h("select", { value: mdata.spd || "Normal", onChange: (e) => setMdata((d) => ({ ...d, spd: e.target.value })) },
               ["Draft", "Normal", "Quality", "Silent"].map((s) => h("option", { key: s }, s))))),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Material"),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Material"),
           h("select", { value: mdata.mat || "PETG", onChange: (e) => setMdata((d) => ({ ...d, mat: e.target.value })) },
             MATS.map((m) => h("option", { key: m }, m)))),
-        h("div", { className: "mfield" }, h("label", { className: "ml" }, "Notes (optional)"),
+        h("div", { className: "form-group" }, h("label", { className: "form-label" }, "Notes (optional)"),
           h("input", { value: mdata.notes || "", placeholder: "Describe when to use this profile...", onChange: (e) => setMdata((d) => ({ ...d, notes: e.target.value })) }))),
 
-      h("div", { className: "mbtns" },
-        h("button", { className: "btn-s", onClick: () => setModal(null) }, modal.type === "settings" ? "Close" : "Cancel"),
-        modal.type === "newProj" && h("button", { className: "btn-p", disabled: !mv.trim(), onClick: createProj }, "Create project"),
-        modal.type === "newIter" && h("button", { className: "btn-p", disabled: !mv.trim(), onClick: createIter }, "Create iteration"),
-        modal.type === "rename" && h("button", { className: "btn-p", disabled: !mv.trim(), onClick: doRename }, "Save"),
-        modal.type === "confirm" && h("button", { className: "btn-danger", onClick: doDelete }, "Delete"),
-        modal.type === "profile" && h("button", { className: "btn-p", disabled: !(mdata.name && mdata.name.trim()), onClick: saveProfile }, "Save profile"),
-        modal.type === "print" && modal.file.type === "gcode" && h("button", { className: "btn-s", style: { color: "var(--grn)", borderColor: "var(--grn)" },
-          onClick: () => { const pro = profiles.find((p) => p.id === selPro); setModal(null); notify(`Sending to Klipper${pro ? ` with \"${pro.name}\" profile` : ""} (stub)...`); } },
+      h("div", { className: "modal-actions" },
+        h("button", { className: "button-secondary", onClick: () => setModal(null) }, modal.type === "settings" ? "Close" : "Cancel"),
+        modal.type === "newProj" && h("button", { className: "button-primary", disabled: !mv.trim(), onClick: createProj }, "Create project"),
+        modal.type === "newIter" && h("button", { className: "button-primary", disabled: !mv.trim(), onClick: createIter }, "Create iteration"),
+        modal.type === "rename" && h("button", { className: "button-primary", disabled: !mv.trim(), onClick: doRename }, "Save"),
+        modal.type === "confirm" && h("button", { className: "button-danger", onClick: doDelete }, "Delete"),
+        modal.type === "profile" && h("button", { className: "button-primary", disabled: !(mdata.name && mdata.name.trim()), onClick: saveProfile }, "Save profile"),
+        modal.type === "print" && modal.file.type === "gcode" && h("button", { className: "button-secondary", style: { color: "var(--green)", borderColor: "var(--green)" },
+          onClick: () => {
+            const pro = profiles.find((p) => p.id === selPro);
+            const profileNote = pro ? ` with \"${pro.name}\" profile` : "";
+            setModal(null);
+            notify(`Sending to Klipper${profileNote} (stub)...`);
+          } },
           h("i", { className: "ti ti-send", "aria-hidden": "true", style: { fontSize: 12 } }), " Klipper"),
-        modal.type === "print" && h("button", { className: "btn-p", onClick: () => { const pro = profiles.find((p) => p.id === selPro); setModal(null); notify(`Opening in OrcaSlicer${pro ? ` - ${pro.name}` : ""} (stub)...`); } },
+        modal.type === "print" && h("button", { className: "button-primary", onClick: () => {
+          const pro = profiles.find((p) => p.id === selPro);
+          const profileNote = pro ? ` - ${pro.name}` : "";
+          setModal(null);
+          notify(`Opening in OrcaSlicer${profileNote} (stub)...`);
+        } },
           h("i", { className: "ti ti-external-link", "aria-hidden": "true", style: { fontSize: 12 } }), " OrcaSlicer"))));
 
-  return h("div", { style: { display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }, onClick: () => setCtxMenu(null) },
-    h("div", { className: "topbar" },
-      h("div", { className: "header-stats" },
-        h("span", null, "PROJECTS ", h("strong", null, projs.length)),
-        h("span", null, "ITERATIONS ", h("strong", null, totalI)),
-        h("span", null, "FILES ", h("strong", null, totalF))),
-      h("div", { className: "header-actions" },
-        searchOpen ? h(React.Fragment, null,
-          h("div", { className: "srch", style: { minWidth: 240 } },
-            h("i", { className: "ti ti-search", "aria-hidden": "true", style: { fontSize: 13, color: "var(--t4)" } }),
-            h("input", { autoFocus: true, value: search, onChange: (e) => setSearch(e.target.value), placeholder: "Search projects and iterations..." })),
-          h("button", { className: "cib", onClick: () => { setSearchOpen(false); setSearch(""); } }, h("i", { className: "ti ti-x", "aria-hidden": "true" })))
-        : h(React.Fragment, null,
-          h("button", { className: "cib", title: "Search", onClick: () => setSearchOpen(true) }, h("i", { className: "ti ti-search", "aria-hidden": "true" })),
-          h("button", { className: "btn-p", onClick: () => { setMv(""); setMv2(""); setModal({ type: "newProj" }); } }, h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 13 } }), "New Project")))),
-
-    h("div", { className: "body" },
-      h("div", { className: "left" },
-        h("div", { className: "sh" }, h("span", { className: "sh-l" }, "Projects"), h("div", { className: "sh-line" })),
-
-        dispP.length === 0 && h("div", { className: "empty", style: { marginTop: 40 } },
-          h("i", { className: "ti ti-folder-off", "aria-hidden": "true", style: { fontSize: 40, color: "var(--t4)" } }),
-          h("span", { style: { fontSize: 14, color: "var(--t3)", fontWeight: 500 } }, search ? `No results for "${search}".` : "No projects yet."),
-          !search && h("button", { className: "btn-p", style: { marginTop: 4 }, onClick: () => { setMv(""); setMv2(""); setModal({ type: "newProj" }); } }, h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 14 } }), "Create first project")),
-
-        dispP.map((proj) => {
-          const isSel = proj.id === pid;
-          return h("div", { key: proj.id, style: { marginBottom: 14 },
-            onDragOver: (e) => { if (dragPid && dragPid !== proj.id) { e.preventDefault(); setDragPOv(proj.id); } },
-            onDragLeave: () => setDragPOv(null),
-            onDrop: (e) => { if (dragPid && dragPid !== proj.id) { e.preventDefault(); reorderP(dragPid, proj.id); } setDragPid(null); setDragPOv(null); },
-            style: { borderTop: dragPOv === proj.id ? "2px solid var(--acc)" : "2px solid transparent", borderRadius: 10, transition: "border-color .1s" } },
-
-            h("div", { style: { display: "flex", alignItems: "center", gap: 7, overflowX: "auto", paddingBottom: 4 } },
-              h("div", { className: `card${isSel && !iid ? " sel" : ""}${drop === `p${proj.id}` ? " over" : ""}`, draggable: true,
-                style: { width: 142, height: 84, padding: "10px 12px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 },
-                title: "Click to view - Drag to reorder", onClick: () => navP(proj),
-                onDragStart: (e) => { e.dataTransfer.effectAllowed = "move"; setDragPid(proj.id); },
-                onDragEnd: () => { setDragPid(null); setDragPOv(null); },
-                onDragOver: (e) => { if (!dragPid && !dragId) { e.preventDefault(); setDrop(`p${proj.id}`); } },
-                onDragLeave: () => setDrop(null),
-                onDrop: (e) => { if (!dragPid && !dragId) extDrop(e, proj.id, null); setDrop(null); } },
-                h("span", { className: "cbadge" }, proj.iters.length),
-                h("div", { style: { fontSize: 12, fontWeight: 700, lineHeight: 1.3, color: isSel && !iid ? "var(--accT)" : "var(--t1)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", paddingRight: 28 } }, proj.name),
-                h("div", { style: { fontSize: 10, color: isSel && !iid ? "var(--accT)" : "var(--t3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4 } }, proj.desc),
-                h("div", { className: "card-acts", onDragStart: (e) => e.stopPropagation(), onClick: (e) => e.stopPropagation() },
-                  cib("ti-pencil", "", "Rename", () => { setMv(proj.name); setMv2(proj.desc || ""); setModal({ type: "rename", what: "proj", name: proj.name }); }),
-                  cib("ti-trash", "del", "Delete", () => setModal({ type: "confirm", what: "proj", name: proj.name })))),
-
-              h("span", { style: { color: "var(--t4)", fontSize: 13, flexShrink: 0, paddingBottom: 2 } }, ">"),
-
-              ...proj.iters.map((it) => {
-                const thisSel = it.id === iid && isSel;
-                const isOver = (dragOv === it.id && dragId !== it.id) || (drop === `i${it.id}`);
-                return h("div", { key: it.id, className: `card ctr grab${thisSel ? " sel" : ""}${isOver ? " over" : ""}${dragId === it.id ? " dim" : ""}`, draggable: true, style: { width: 94, height: 84 },
-                  title: "Click - Right-click for more - Drag to reorder",
-                  onClick: () => navI(proj.id, it), onContextMenu: (e) => openCtx(e, { kind: "iter", it, projId: proj.id }),
-                  onDragStart: (e) => { e.dataTransfer.effectAllowed = "move"; setDragId(it.id); setPid(proj.id); },
-                  onDragEnd: () => { setDragId(null); setDragOv(null); setDrop(null); },
-                  onDragOver: (e) => { e.preventDefault(); dragId ? setDragOv(it.id) : setDrop(`i${it.id}`); },
-                  onDragLeave: () => { setDragOv(null); setDrop(null); },
-                  onDrop: (e) => { e.preventDefault(); if (dragId) { const sp = projs.find((p) => p.iters.some((i) => i.id === dragId)); if (sp && sp.id === proj.id) reorderI(dragId, it.id, proj.id); } else if (!dragPid) extDrop(e, proj.id, it.id); setDrop(null); } },
-                  h("div", { style: { fontFamily: "monospace", fontSize: 18, fontWeight: 800, lineHeight: 1, color: thisSel ? "var(--accT)" : "var(--t1)", letterSpacing: "-.02em" } }, `v${it.ver}`),
-                  h("div", { style: { fontSize: 9, lineHeight: 1.3, color: thisSel ? "var(--accT)" : "var(--t3)", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", width: "100%", fontWeight: 500 } }, it.label),
-                  h("div", { className: "card-acts", onDragStart: (e) => e.stopPropagation(), onClick: (e) => e.stopPropagation() },
-                    cib("ti-pencil", "", "Rename", () => { setMv(it.label); setModal({ type: "rename", what: "iter", pid: proj.name, ver: it.ver }); }),
-                    cib("ti-trash", "del", "Delete", () => setModal({ type: "confirm", what: "iter", pid: proj.name, ver: it.ver, name: it.label }))));
-              }),
-
-              h("div", { className: `newcard${drop === `n${proj.id}` ? " over" : ""}`, style: { width: 56, height: 84 },
-                onClick: () => { setPid(proj.id); setModal({ type: "newIter", pid: proj.id, files: [] }); setMv(""); },
-                onDragOver: (e) => { if (!dragPid && !dragId) { e.preventDefault(); setDrop(`n${proj.id}`); } },
-                onDragLeave: () => setDrop(null),
-                onDrop: (e) => { if (!dragPid && !dragId) extDrop(e, proj.id, null); setDrop(null); } },
-                h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 20, color: drop === `n${proj.id}` ? "var(--acc)" : "var(--t4)" } }),
-                h("div", { style: { fontSize: 8, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: drop === `n${proj.id}` ? "var(--acc)" : "var(--t4)" } }, "New"))
-            ));
-        })
-      ),
-
-      h("div", { className: "right" },
-        h("div", { className: "tabs" },
-          ["Notes", "Files", "Details"].map((t) => h("button", { key: t, className: `tab${tab === t.toLowerCase() ? " on" : ""}`, onClick: () => setTab(t.toLowerCase()) }, t))),
-
-        tab === "notes" && h("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" } },
-          h("div", { className: "notes-path" },
-            h("i", { className: "ti ti-file-text", "aria-hidden": "true", style: { fontSize: 12, color: "var(--t4)" } }),
-            h("span", { style: { fontSize: 10, fontFamily: "monospace", color: "var(--t3)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, mdPath || "-"),
-            editMd && h("span", { style: { fontSize: 9, padding: "2px 7px", borderRadius: 100, background: "var(--ambL)", color: "var(--amb)", fontWeight: 700, flexShrink: 0 } }, "EDITING")),
-          editMd ? h("textarea", { className: "mdinput", value: curMd, onChange: (e) => updateMd(e.target.value) }) :
-            h("div", { style: { flex: 1, overflowY: "auto", padding: "14px 18px 40px" } }, renderMd(curMd)),
-          h("button", { className: `cib${editMd ? " on" : ""}`, title: editMd ? "Preview" : "Edit",
-            style: { position: "absolute", bottom: 12, right: 12, width: 28, height: 28, fontSize: 12, boxShadow: "0 1px 4px rgba(0,0,0,.12)" },
-            onClick: () => { if (editMd) { persistMd().finally(() => setEditMd(false)); } else { setEditMd(true); } } },
-            h("i", { className: `ti ${editMd ? "ti-eye" : "ti-pencil"}`, "aria-hidden": "true" }))),
-
-        tab === "files" && h("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" } },
-          h("div", { style: { padding: "10px 12px 0" } },
-            h("div", { className: "srch" },
-              h("i", { className: "ti ti-search", "aria-hidden": "true", style: { fontSize: 13, color: "var(--t4)" } }),
-              h("input", { value: fs, onChange: (e) => setFs(e.target.value), placeholder: "Search files..." }))),
-          avTypes.length > 0 && h("div", { style: { display: "flex", gap: 5, padding: "8px 12px 6px", flexWrap: "wrap" } },
-            h("button", { className: `fchip${ff === "all" ? " on" : ""}`, onClick: () => setFf("all") }, "All"),
-            ...avTypes.map((t) => h("button", { key: t, className: `fchip${ff === t ? " on" : ""}`, onClick: () => setFf(t) }, t.toUpperCase()))),
-          h("div", { style: { flex: 1, overflowY: "auto", padding: "4px" } }, FT),
-          h("div", { style: { padding: "10px 12px", borderTop: "1px solid var(--bdr)", flexShrink: 0 } },
-            selFile && h("div", { style: { fontSize: 10, color: "var(--t3)", marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 } }, selFile.name),
-            h("button", { className: "btn-d", disabled: !selFile, onClick: openPrint },
-              h("i", { className: "ti ti-printer", "aria-hidden": "true", style: { fontSize: 15 } }),
-              selFile ? `Print ${selFile.name.split(".").pop().toUpperCase()}` : "Select a file to print"))),
-
-        tab === "details" && DET
-      )
-    ),
-
-    Modal,
-
-    ctxMenu && h("div", { className: "ctx", style: { left: ctxMenu.x, top: ctxMenu.y }, onClick: (e) => e.stopPropagation() },
-      ctxMenu.kind === "iter" ? h(React.Fragment, null,
-        h("div", { className: "ctx-i", onClick: () => { setMv(ctxMenu.it.label); setModal({ type: "rename", what: "iter", pid: selP?.name, ver: ctxMenu.it.ver }); setCtxMenu(null); } }, h("i", { className: "ti ti-pencil", "aria-hidden": "true", style: { fontSize: 13, color: "var(--t3)" } }), " Rename"),
-        h("div", { className: "ctx-i", onClick: () => dupI(ctxMenu.projId, ctxMenu.it) }, h("i", { className: "ti ti-copy", "aria-hidden": "true", style: { fontSize: 13, color: "var(--t3)" } }), " Duplicate"),
-        h("div", { className: "ctx-sep" }),
-        h("div", { className: "ctx-i warn", onClick: () => { setModal({ type: "confirm", what: "iter", pid: selP?.name, ver: ctxMenu.it.ver, name: ctxMenu.it.label }); setCtxMenu(null); } }, h("i", { className: "ti ti-trash", "aria-hidden": "true", style: { fontSize: 13 } }), " Delete"))
+  const renderHeader = () => h("header", { className: "page-header" },
+    h("div", { className: "header-stats" },
+      h("span", null, "PROJECTS ", h("strong", null, projs.length)),
+      h("span", null, "ITERATIONS ", h("strong", null, totalI)),
+      h("span", null, "FILES ", h("strong", null, totalF))),
+    h("div", { className: "header-actions" },
+      searchOpen ? h(React.Fragment, null,
+        h("div", { className: "search-field", style: { minWidth: 240 } },
+          h("i", { className: "ti ti-search", "aria-hidden": "true", style: { fontSize: 13, color: "var(--text-faint)" } }),
+          h("input", { autoFocus: true, value: search, onChange: (e) => setSearch(e.target.value), placeholder: "Search projects and iterations..." })),
+        h("button", { className: "icon-button", onClick: () => { setSearchOpen(false); setSearch(""); } }, h("i", { className: "ti ti-x", "aria-hidden": "true" })))
       : h(React.Fragment, null,
-        h("div", { className: "ctx-i", onClick: () => { notify("Open in Finder (stub)"); setCtxMenu(null); } }, h("i", { className: "ti ti-external-link", "aria-hidden": "true", style: { fontSize: 13, color: "var(--t3)" } }), " Open in Finder"),
-        h("div", { className: "ctx-i", onClick: () => { notify("Path copied (stub)"); setCtxMenu(null); } }, h("i", { className: "ti ti-copy", "aria-hidden": "true", style: { fontSize: 13, color: "var(--t3)" } }), " Copy path"),
-        h("div", { className: "ctx-sep" }),
-        h("div", { className: "ctx-i warn", onClick: () => removeFile(ctxMenu.itId, ctxMenu.file.name) }, h("i", { className: "ti ti-trash", "aria-hidden": "true", style: { fontSize: 13 } }), " Remove from iteration"))),
+        h("button", { className: "button-primary", onClick: () => { setMv(""); setMv2(""); setModal({ type: "newProj" }); } }, h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 13 } }), "New Project"),
+        h("button", { className: "icon-button search-toggle", title: "Search", onClick: () => setSearchOpen(true) }, h("i", { className: "ti ti-search", "aria-hidden": "true" })))));
 
-    toast && h("div", { className: "toast" }, h("i", { className: "ti ti-check", "aria-hidden": "true", style: { fontSize: 13 } }), toast)
+  const renderProjectsPanel = () => h("div", { className: "projects-panel" },
+    h("div", { className: "panel-heading" }, h("strong", null, "Projects")),
+
+    dispP.length === 0 && h("div", { className: "empty-state", style: { marginTop: 40 } },
+      h("i", { className: "ti ti-folder-off", "aria-hidden": "true", style: { fontSize: 40, color: "var(--text-faint)" } }),
+      h("span", { style: { fontSize: 14, color: "var(--text-dim)", fontWeight: 500 } }, search ? `No results for "${search}".` : "No projects yet."),
+      !search && h("button", { className: "button-primary", style: { marginTop: 4 }, onClick: () => { setMv(""); setMv2(""); setModal({ type: "newProj" }); } }, h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 14 } }), "Create first project")),
+
+    dispP.map((proj) => {
+      const isSel = proj.id === pid;
+      return h("div", { key: proj.id, style: { marginBottom: 14 },
+        onDragOver: (e) => { if (dragPid && dragPid !== proj.id) { e.preventDefault(); setDragPOv(proj.id); } },
+        onDragLeave: () => setDragPOv(null),
+        onDrop: (e) => { if (dragPid && dragPid !== proj.id) { e.preventDefault(); reorderP(dragPid, proj.id); } setDragPid(null); setDragPOv(null); },
+        style: { borderTop: dragPOv === proj.id ? "2px solid var(--amber)" : "2px solid transparent", borderRadius: 10, transition: "border-color .1s" } },
+
+        h("div", { style: { display: "flex", alignItems: "center", gap: 7, overflowX: "auto", paddingBottom: 4 } },
+          h("div", { className: `card${isSel && !iid ? " is-selected" : ""}${drop === `p${proj.id}` ? " is-drop-target" : ""}`, draggable: true,
+            style: { width: 142, height: 84, padding: "10px 12px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 },
+            title: "Click to view - Drag to reorder", onClick: () => navP(proj),
+            onDragStart: (e) => { e.dataTransfer.effectAllowed = "move"; setDragPid(proj.id); },
+            onDragEnd: () => { setDragPid(null); setDragPOv(null); },
+            onDragOver: (e) => { if (!dragPid && !dragId) { e.preventDefault(); setDrop(`p${proj.id}`); } },
+            onDragLeave: () => setDrop(null),
+            onDrop: (e) => { if (!dragPid && !dragId) extDrop(e, proj.id, null); setDrop(null); } },
+            h("span", { className: "card-badge" }, proj.iters.length),
+            h("div", { style: { fontSize: 12, fontWeight: 700, lineHeight: 1.3, color: isSel && !iid ? "var(--amber-dim)" : "var(--text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", paddingRight: 28 } }, proj.name),
+            h("div", { style: { fontSize: 10, color: isSel && !iid ? "var(--amber-dim)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4 } }, proj.desc),
+            h("div", { className: "card-actions", onDragStart: (e) => e.stopPropagation(), onClick: (e) => e.stopPropagation() },
+              cib("ti-pencil", "", "Rename", () => { setMv(proj.name); setMv2(proj.desc || ""); setModal({ type: "rename", what: "proj", name: proj.name }); }),
+              cib("ti-trash", "is-danger", "Delete", () => setModal({ type: "confirm", what: "proj", name: proj.name })))),
+
+          h("span", { style: { color: "var(--text-faint)", fontSize: 13, flexShrink: 0, paddingBottom: 2 } }, ">"),
+
+          ...proj.iters.map((it) => {
+            const thisSel = it.id === iid && isSel;
+            const isOver = (dragOv === it.id && dragId !== it.id) || (drop === `i${it.id}`);
+            return h("div", { key: it.id, className: `card card-centered is-grabbable${thisSel ? " is-selected" : ""}${isOver ? " is-drop-target" : ""}${dragId === it.id ? " is-dimmed" : ""}`, draggable: true, style: { width: 94, height: 84 },
+              title: "Click - Right-click for more - Drag to reorder",
+              onClick: () => navI(proj.id, it), onContextMenu: (e) => openCtx(e, { kind: "iter", it, projId: proj.id }),
+              onDragStart: (e) => { e.dataTransfer.effectAllowed = "move"; setDragId(it.id); setPid(proj.id); },
+              onDragEnd: () => { setDragId(null); setDragOv(null); setDrop(null); },
+              onDragOver: (e) => { e.preventDefault(); dragId ? setDragOv(it.id) : setDrop(`i${it.id}`); },
+              onDragLeave: () => { setDragOv(null); setDrop(null); },
+              onDrop: (e) => { e.preventDefault(); if (dragId) { const sp = projs.find((p) => p.iters.some((i) => i.id === dragId)); if (sp && sp.id === proj.id) reorderI(dragId, it.id, proj.id); } else if (!dragPid) extDrop(e, proj.id, it.id); setDrop(null); } },
+              h("div", { style: { fontFamily: "monospace", fontSize: 18, fontWeight: 800, lineHeight: 1, color: thisSel ? "var(--amber-dim)" : "var(--text)", letterSpacing: "-.02em" } }, `v${it.ver}`),
+              h("div", { style: { fontSize: 9, lineHeight: 1.3, color: thisSel ? "var(--amber-dim)" : "var(--text-dim)", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", width: "100%", fontWeight: 500 } }, it.label),
+              h("div", { className: "card-actions", onDragStart: (e) => e.stopPropagation(), onClick: (e) => e.stopPropagation() },
+                cib("ti-pencil", "", "Rename", () => { setMv(it.label); setModal({ type: "rename", what: "iter", pid: proj.name, ver: it.ver }); }),
+                cib("ti-trash", "is-danger", "Delete", () => setModal({ type: "confirm", what: "iter", pid: proj.name, ver: it.ver, name: it.label }))));
+          }),
+
+          h("div", { className: `new-card${drop === `n${proj.id}` ? " is-drop-target" : ""}`, style: { width: 56, height: 84 },
+            onClick: () => { setPid(proj.id); setModal({ type: "newIter", pid: proj.id, files: [] }); setMv(""); },
+            onDragOver: (e) => { if (!dragPid && !dragId) { e.preventDefault(); setDrop(`n${proj.id}`); } },
+            onDragLeave: () => setDrop(null),
+            onDrop: (e) => { if (!dragPid && !dragId) extDrop(e, proj.id, null); setDrop(null); } },
+            h("i", { className: "ti ti-plus", "aria-hidden": "true", style: { fontSize: 20, color: drop === `n${proj.id}` ? "var(--amber)" : "var(--text-faint)" } }),
+            h("div", { style: { fontSize: 8, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: drop === `n${proj.id}` ? "var(--amber)" : "var(--text-faint)" } }, "New"))
+        ));
+    })
+  );
+
+  const renderDetailsPanel = () => h("div", { className: "details-panel" },
+    h("div", { className: "tabs" },
+      ["Notes", "Files", "Details"].map((t) => h("button", { key: t, className: `tab${tab === t.toLowerCase() ? " active" : ""}`, onClick: () => setTab(t.toLowerCase()) }, t))),
+
+    tab === "notes" && h("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" } },
+      h("div", { className: "notes-path" },
+        h("i", { className: "ti ti-file-text", "aria-hidden": "true", style: { fontSize: 12, color: "var(--text-faint)" } }),
+        h("span", { style: { fontSize: 10, fontFamily: "monospace", color: "var(--text-dim)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, mdPath || "-"),
+        editMd && h("span", { style: { fontSize: 9, padding: "2px 7px", borderRadius: 100, background: "var(--orange-dim)", color: "var(--orange)", fontWeight: 700, flexShrink: 0 } }, "EDITING")),
+      editMd ? h("textarea", { className: "markdown-input", value: curMd, onChange: (e) => updateMd(e.target.value) }) :
+        h("div", { style: { flex: 1, overflowY: "auto", padding: "14px 18px 40px" } }, renderMd(curMd)),
+      h("button", { className: `icon-button${editMd ? " active" : ""}`, title: editMd ? "Preview" : "Edit",
+        style: { position: "absolute", bottom: 12, right: 12, width: 28, height: 28, fontSize: 12, boxShadow: "0 1px 4px rgba(0,0,0,.12)" },
+        onClick: () => { if (editMd) { persistMd().finally(() => setEditMd(false)); } else { setEditMd(true); } } },
+        h("i", { className: `ti ${editMd ? "ti-eye" : "ti-pencil"}`, "aria-hidden": "true" }))),
+
+    tab === "files" && h("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" } },
+      h("div", { style: { padding: "10px 12px 0" } },
+        h("div", { className: "search-field" },
+          h("i", { className: "ti ti-search", "aria-hidden": "true", style: { fontSize: 13, color: "var(--text-faint)" } }),
+          h("input", { value: fs, onChange: (e) => setFs(e.target.value), placeholder: "Search files..." }))),
+      avTypes.length > 0 && h("div", { style: { display: "flex", gap: 5, padding: "8px 12px 6px", flexWrap: "wrap" } },
+        h("button", { className: `filter-chip${ff === "all" ? " active" : ""}`, onClick: () => setFf("all") }, "All"),
+        ...avTypes.map((t) => h("button", { key: t, className: `filter-chip${ff === t ? " active" : ""}`, onClick: () => setFf(t) }, t.toUpperCase()))),
+      h("div", { style: { flex: 1, overflowY: "auto", padding: "4px" } }, renderFileTree()),
+      h("div", { style: { padding: "10px 12px", borderTop: "1px solid var(--border)", flexShrink: 0 } },
+        selFile && h("div", { style: { fontSize: 10, color: "var(--text-dim)", marginBottom: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 } }, selFile.name),
+        h("button", { className: "button-dashed", disabled: !selFile, onClick: openPrint },
+          h("i", { className: "ti ti-printer", "aria-hidden": "true", style: { fontSize: 15 } }),
+          selFile ? `Print ${selFile.name.split(".").pop().toUpperCase()}` : "Select a file to print"))),
+
+    tab === "details" && renderDetails()
+  );
+
+  const renderMain = () => h("div", { className: "main" },
+    renderProjectsPanel(),
+    renderDetailsPanel()
+  );
+
+  const renderContextMenu = () => ctxMenu && h("div", { className: "context-menu", style: { left: ctxMenu.x, top: ctxMenu.y }, onClick: (e) => e.stopPropagation() },
+    ctxMenu.kind === "iter" ? h(React.Fragment, null,
+      h("div", { className: "context-menu-item", onClick: () => { setMv(ctxMenu.it.label); setModal({ type: "rename", what: "iter", pid: selP?.name, ver: ctxMenu.it.ver }); setCtxMenu(null); } }, h("i", { className: "ti ti-pencil", "aria-hidden": "true", style: { fontSize: 13, color: "var(--text-dim)" } }), " Rename"),
+      h("div", { className: "context-menu-item", onClick: () => dupI(ctxMenu.projId, ctxMenu.it) }, h("i", { className: "ti ti-copy", "aria-hidden": "true", style: { fontSize: 13, color: "var(--text-dim)" } }), " Duplicate"),
+      h("div", { className: "context-menu-separator" }),
+      h("div", { className: "context-menu-item warning", onClick: () => { setModal({ type: "confirm", what: "iter", pid: selP?.name, ver: ctxMenu.it.ver, name: ctxMenu.it.label }); setCtxMenu(null); } }, h("i", { className: "ti ti-trash", "aria-hidden": "true", style: { fontSize: 13 } }), " Delete"))
+    : h(React.Fragment, null,
+      h("div", { className: "context-menu-item", onClick: () => { notify("Open in Finder (stub)"); setCtxMenu(null); } }, h("i", { className: "ti ti-external-link", "aria-hidden": "true", style: { fontSize: 13, color: "var(--text-dim)" } }), " Open in Finder"),
+      h("div", { className: "context-menu-item", onClick: () => { notify("Path copied (stub)"); setCtxMenu(null); } }, h("i", { className: "ti ti-copy", "aria-hidden": "true", style: { fontSize: 13, color: "var(--text-dim)" } }), " Copy path"),
+      h("div", { className: "context-menu-separator" }),
+      h("div", { className: "context-menu-item warning", onClick: () => removeFile(ctxMenu.itId, ctxMenu.file.name) }, h("i", { className: "ti ti-trash", "aria-hidden": "true", style: { fontSize: 13 } }), " Remove from iteration")));
+
+  const renderToast = () => toast && h("div", { className: "toast" }, h("i", { className: "ti ti-check", "aria-hidden": "true", style: { fontSize: 13 } }), toast);
+
+  return h("div", { style: { display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }, onClick: () => setCtxMenu(null) },
+    renderHeader(),
+    renderMain(),
+    renderModal(),
+    renderContextMenu(),
+    renderToast()
   );
 }
 

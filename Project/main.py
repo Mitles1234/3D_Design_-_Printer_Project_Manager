@@ -139,11 +139,14 @@ def _fallback_remove_filament_from_printer(printer_id, filament_id):
 
 
 class API:
-    def ADD_PROJECT(self, name):
-        return project.add_project(name)
+    def ADD_PROJECT(self, name, description=None):
+        return project.add_project(name, description=description)
 
     def LIST_PROJECTS(self):
         return project.list_projects()
+
+    def LIST_PROJECTS_BUNDLE(self, include_notes=False):
+        return project.list_projects_bundle(include_notes)
 
     def UPDATE_PROJECT(self, name, new_name, **updates):
         return project.update_project(name, new_name, **updates)
@@ -160,10 +163,16 @@ class API:
     def CREATE_PROJECT_VERSION(self, name, version, label=None, meta=None):
         return project.create_project_version(name, version, label=label, meta=meta)
 
+    def CREATE_PROJECT_VERSION_AUTO(self, name, label=None, meta=None):
+        return project.create_project_version_auto(name, label=label, meta=meta)
+
     def UPDATE_PROJECT_VERSION(self, name, version, updates=None, **kwargs):
         if isinstance(updates, dict):
             kwargs.update(updates)
         return project.update_project_version(name, version, **kwargs)
+
+    def DUPLICATE_PROJECT_VERSION(self, name, version, step=0.1):
+        return project.duplicate_project_version(name, version, step=step)
 
     def REMOVE_PROJECT_VERSION(self, name, version, delete_files=True):
         return project.remove_project_version(name, version, delete_files)

@@ -152,7 +152,7 @@ function refreshData() {
 }
 
 function setFilter(el, mat) {
-  document.querySelectorAll('.filter-pill').forEach((pill) => pill.classList.remove('active'));
+  document.querySelectorAll('.filter-chip').forEach((pill) => pill.classList.remove('active'));
   el.classList.add('active');
   activeFilter = mat;
   renderFilaments();
@@ -519,7 +519,7 @@ function openFilamentModalInternal() {
   syncMaterialInput();
   buildColorGrid();
   document.querySelector('#filament-modal .modal-title').textContent = 'ADD FILAMENT';
-  document.querySelector('#filament-modal .btn-confirm').textContent = 'Add Spool';
+  document.querySelector('#filament-modal .button-confirm').textContent = 'Add Spool';
   document.getElementById('filament-modal').classList.add('open');
 }
 
@@ -546,7 +546,7 @@ function openFilamentModalForEdit(filamentId) {
   syncMaterialInput();
   buildColorGrid();
   document.querySelector('#filament-modal .modal-title').textContent = 'EDIT FILAMENT';
-  document.querySelector('#filament-modal .btn-confirm').textContent = 'Save Changes';
+  document.querySelector('#filament-modal .button-confirm').textContent = 'Save Changes';
   document.getElementById('filament-modal').classList.add('open');
 }
 
