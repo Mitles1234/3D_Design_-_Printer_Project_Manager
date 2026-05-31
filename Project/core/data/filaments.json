@@ -2,11 +2,11 @@
     {
         "filament_id": "W9I-HN4-BNC",
         "manufacturer": "SUNLU",
-        "material": "PLA-CF",
+        "material": "PETG",
         "colour": "#1e1e2e",
         "diameter": 1.75,
-        "name": "Another Random Brand",
-        "color": "#ec4899",
-        "weight": 1000
+        "name": "Sunlu PETG",
+        "color": "#1e1e2e",
+        "weight": 64
     }
 ]

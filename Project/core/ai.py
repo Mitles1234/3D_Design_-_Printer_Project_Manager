@@ -34,4 +34,4 @@ def main(prompt: str) -> None:
 
 
 if __name__ == "__main__":
-    main(" ".join(sys.argv[1:]) or input("Enter your prompt: "))
+    main(input("Enter your prompt: ") + "JUST GIVE THE RESPONSE AS JUST THE NAME, DO NOT INCLUDE AN EXPLAINATION")
