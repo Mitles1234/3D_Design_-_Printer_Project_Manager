@@ -1,42 +1,25 @@
 [
-    {
-        "project_name": "name",
-        "project_id": "1234",
-        "collapsed": false,
-        "accent_colour": "#1ed4a9",
+  {
+    "project_id": "proj_1234",
+    "project_name": "Fan Duct Assembly",
+    "accent_colour": "#1D9E75",
+    "collapsed": false,
+    "created_at": "2026-06-01T14:48:00.000Z",
+    "last_updated": "2026-06-01T14:48:00.000Z",
+    "connections": [
+      { "from": "node_abc", "to": "node_def" },
+      { "from": "node_abc", "to": "node_ghi" }
+    ],
+    "nodes": [
+      {
+        "node_id": "node_abc",
+        "node_name": "Initial concept",
+        "date": "2025-01-10",
+        "description": "First rough geometry",
+        "files": ["sketch.stl"],
         "created_at": "2026-06-01T14:48:00.000Z",
-        "last_updated": "2026-06-01T14:48:00.000Z",
-        "nodes": [
-            {
-                "node_name": "A Cool Node",
-                "node_id": "1234",
-                "date": "2026-05-31",
-                "description": "A Good Description",
-                "created_at": "2026-06-01T14:48:00.000Z",
-                "last_updated": "2026-06-01T14:48:00.000Z",
-                "connection_in": ["node2"],
-                "connection_out": ["node3", "node 4"]
-            },
-            {
-                "node_name": "A Cool Node",
-                "node_id": "1234",
-                "date": "2026-05-31",
-                "description": "A Good Description",
-                "created_at": "2026-06-01T14:48:00.000Z",
-                "last_updated": "2026-06-01T14:48:00.000Z",
-                "connection_in": ["node2"],
-                "connection_out": ["node3", "node 4"]
-            },
-            {
-                "node_name": "A Cool Node",
-                "node_id": "1234",
-                "date": "2026-05-31",
-                "description": "A Good Description",
-                "created_at": "2026-06-01T14:48:00.000Z",
-                "last_updated": "2026-06-01T14:48:00.000Z",
-                "connection_in": ["node2"],
-                "connection_out": ["node3", "node 4"]
-            }
-        ]
-    }
+        "last_updated": "2026-06-01T14:48:00.000Z"
+      }
+    ]
+  }
 ]
