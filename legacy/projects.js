@@ -1,4 +1,403 @@
+const { useState, useRef, useEffect } = React;
 
+const h = React.createElement;
+
+const PRINTER_STATES = [
+  { label: "Ready",    connected: true,  dot: "#38A169", hotend: { c: 27,  t: 0   }, bed: { c: 24, t: 0  }, printing: null },
+  { label: "Heating",  connected: true,  dot: "#D69E2E", hotend: { c: 142, t: 215 }, bed: { c: 38, t: 60 }, printing: null },
+  { label: "Printing", connected: true,  dot: "#0098A8", hotend: { c: 215, t: 215 }, bed: { c: 60, t: 60 }, printing: { file: "bracket_v1.1.gcode", pct: 47 } },
+  { label: "Offline",  connected: false, dot: "#E53E3E", hotend: { c: 22,  t: 0   }, bed: { c: 22, t: 0  }, printing: null },
+];
+
+const MATERIAL_COLOURS = {
+  PLA:   { bg: "#DBEAFE", c: "#1D4ED8" },
+  PETG:  { bg: "#D1FAE5", c: "#065F46" },
+  ASA:   { bg: "#FEF3C7", c: "#92400E" },
+  ABS:   { bg: "#FCE7F3", c: "#9D174D" },
+  TPU:   { bg: "#EDE9FE", c: "#5B21B6" },
+  Nylon: { bg: "#F0F9FF", c: "#0369A1" },
+};
+
+const FILE_ICONS = { stl: "ti-box", "3mf": "ti-box", gcode: "ti-code" };
+
+const FILE_COLOURS = { stl: "#D97706", "3mf": "#2563EB", gcode: "#059669" };
+
+const MATERIALS = ["PLA", "PETG", "ASA", "ABS", "TPU", "Nylon", "PC", "PA-CF"];
+
+function materialStyle(material) {
+  return MATERIAL_COLOURS[material] || { bg: "#F7FAFC", c: "#718096" };
+}
+
+let apiPromise = null;
+
+let apiStatusTimer = null;
+
+function getApiHandle() {
+  try {
+    if (window.pywebview && window.pywebview.api) return window.pywebview.api;
+  } catch (_) {}
+
+  try {
+
+    if (window.parent && window.parent !== window &&
+        window.parent.pywebview && window.parent.pywebview.api) {
+      return window.parent.pywebview.api;
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+function waitForApi() {
+  if (apiPromise) return apiPromise;
+
+  apiPromise = new Promise((resolve) => {
+    const tryResolve = () => {
+      const api = getApiHandle();
+      if (api) {
+
+        if (apiStatusTimer) { clearInterval(apiStatusTimer); apiStatusTimer = null; }
+        resolve(api);
+      }
+    };
+
+    tryResolve();
+
+
+    window.addEventListener("pywebviewready", tryResolve, { once: true });
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.addEventListener("pywebviewready", tryResolve, { once: true });
+      }
+    } catch (_) {}
+
+
+    apiStatusTimer = setInterval(tryResolve, 250);
+  });
+
+  return apiPromise;
+}
+
+function fileTypeFromName(name) {
+  if (!name) return "";
+  const parts = name.split(".");
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+}
+
+function normalizeFile(file) {
+  const name = file?.name || file?.filename || "file";
+
+
+  const type = (file?.type || file?.file_type || "" || fileTypeFromName(name)).toLowerCase();
+
+
+  let sizeBytes = 0;
+  if (Number.isFinite(file?.size))       sizeBytes = file.size;
+  if (Number.isFinite(file?.size_bytes)) sizeBytes = file.size_bytes;
+  if (Number.isFinite(file?.sizeBytes))  sizeBytes = file.sizeBytes;
+
+  const sizeText = typeof file?.size === "string" ? file.size : formatSize(sizeBytes);
+  return { name, type, size: sizeText, sizeBytes };
+}
+
+function normalizeVersion(projectId, version) {
+  const ver  = String(version?.version ?? version?.ver ?? "1.0");
+  const meta  = version?.meta || {};
+  const files = Array.isArray(version?.files) ? version.files.map(normalizeFile) : [];
+
+  return {
+    id:    version?.id || `v-${projectId}-${ver}`,
+    ver,
+    label: version?.label || `Version ${ver}`,
+    date:  version?.creation_date || version?.date || "",
+    meta: {
+      material: meta.material || "",
+      color:    meta.color    || "",
+      weight:   meta.weight   || "",
+    },
+    files,
+    md: version?.md || "",
+  };
+}
+
+function normalizeProject(project, versions) {
+  const id = project?.project_id || project?.id || `p-${project?.name || "project"}`;
+  return {
+    id,
+    name:    project?.name        || "Untitled Project",
+    desc:    project?.description || project?.desc || "",
+    created: project?.creation_date || project?.created || "",
+    md:      project?.md || "",
+    iters:   (versions || []).map((v) => normalizeVersion(id, v)),
+  };
+}
+
+function mergeNotes(nextProjects, prevProjects) {
+
+  const noteMap = new Map();
+  (prevProjects || []).forEach((proj) => {
+    if (proj.md) noteMap.set(`p:${proj.name}`, proj.md);
+    (proj.iters || []).forEach((iter) => {
+      if (iter.md) noteMap.set(`i:${proj.name}:${iter.ver}`, iter.md);
+    });
+  });
+
+  return (nextProjects || []).map((proj) => ({
+    ...proj,
+    md: noteMap.get(`p:${proj.name}`) || proj.md || "",
+    iters: (proj.iters || []).map((iter) => ({
+      ...iter,
+      md: noteMap.get(`i:${proj.name}:${iter.ver}`) || iter.md || "",
+    })),
+  }));
+}
+
+async function fetchProjectBundle(api) {
+
+  if (api && typeof api.LIST_PROJECTS_BUNDLE === "function") {
+    const list   = await api.LIST_PROJECTS_BUNDLE(false);
+    const bundle = Array.isArray(list) ? list : [];
+    return bundle.map((entry) => ({
+      project:  entry?.project  || entry,
+      versions: entry?.versions || [],
+    }));
+  }
+
+
+  const list     = await api.LIST_PROJECTS();
+  const projects = Array.isArray(list) ? list : [];
+  const bundle   = [];
+
+  for (const proj of projects) {
+    let versions = [];
+    try {
+      const result = await api.LIST_PROJECT_VERSIONS(proj.name);
+      versions = Array.isArray(result) ? result : [];
+    } catch (_) {
+      versions = [];
+    }
+    bundle.push({ project: proj, versions });
+  }
+
+  return bundle;
+}
+
+function formatSize(bytes) {
+  if (!Number.isFinite(bytes)) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+function totalFileSize(files) {
+  const total = files.reduce((sum, f) => sum + (f.sizeBytes || 0), 0);
+  return formatSize(total);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result || "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function parseBold(s) {
+  const parts = [];
+  let remaining = s;
+  let keyIndex  = 0;
+
+  while (remaining.includes("**")) {
+    const openPos  = remaining.indexOf("**");
+    const closePos = remaining.indexOf("**", openPos + 2);
+
+    if (closePos === -1) { parts.push(remaining); remaining = ""; break; }
+
+    if (openPos > 0) parts.push(remaining.slice(0, openPos));
+    parts.push(h("strong", { key: keyIndex++, style: { color: "var(--text)" } },
+      remaining.slice(openPos + 2, closePos)));
+    remaining = remaining.slice(closePos + 2);
+  }
+
+  if (remaining) parts.push(remaining);
+
+
+  if (parts.length === 0) return "";
+  if (parts.length === 1 && typeof parts[0] === "string") return parts[0];
+  return parts;
+}
+
+function renderMd(md) {
+  if (!md) {
+    return h("span", { style: { color: "var(--text-faint)", fontSize: 12 } },
+      "No content - click edit to start writing.");
+  }
+
+  return md.split("\n").map((line, i) => {
+
+    if (line.startsWith("# ")) {
+      return h("div", { key: i, style: { fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8, marginTop: i ? 6 : 0, lineHeight: 1.3 } },
+        line.slice(2));
+    }
+
+    if (line.startsWith("## ")) {
+      return h("div", { key: i, style: { fontSize: 9, fontWeight: 700, color: "var(--text-dim)", marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.1em" } },
+        line.slice(3));
+    }
+
+    if (line.startsWith("- ") || line.startsWith("-- ")) {
+      return h("div", { key: i, style: { display: "flex", gap: 8, marginBottom: 3 } },
+        h("span", { style: { color: "var(--text-faint)", flexShrink: 0, lineHeight: 1.7 } }, "-"),
+        h("span", { style: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7 } }, parseBold(line.slice(2))));
+    }
+
+    if (!line.trim()) return h("div", { key: i, style: { height: 6 } });
+
+    return h("div", { key: i, style: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 2 } },
+      parseBold(line));
+  });
+}
+
+function App() {
+
+
+  const [projs,       setProjs]       = useState([]);
+  const [pid,         setPid]         = useState(null);
+  const [iid,         setIid]         = useState(null);
+  const [tab,         setTab]         = useState("files");
+  const [editMd,      setEditMd]      = useState(false);
+  const [selFile,     setSelFile]     = useState(null);
+  const [ff,          setFf]          = useState("all");
+  const [fs,          setFs]          = useState("");
+  const [search,      setSearch]      = useState("");
+  const [searchOpen,  setSearchOpen]  = useState(false);
+  const [drop,        setDrop]        = useState(null);
+  const [modal,       setModal]       = useState(null);
+  const [mv,          setMv]          = useState("");
+  const [mv2,         setMv2]         = useState("");
+  const [ctxMenu,     setCtxMenu]     = useState(null);
+  const [pidx,        setPidx]        = useState(0);
+  const [sett,        setSett]        = useState({
+    name: "Voron 2.4", ip: "192.168.1.100", api: "Mainsail",
+    path: "/Applications/OrcaSlicer.app",
+  });
+  const [profiles,    setProfiles]    = useState([
+    { id: "pp1", name: "Draft 0.3mm",    lh: "0.30", infill: "15", sup: "None", spd: "Draft",   mat: "PLA",  notes: "Quick test prints" },
+    { id: "pp2", name: "Standard 0.2mm", lh: "0.20", infill: "20", sup: "None", spd: "Normal",  mat: "PETG", notes: "Everyday functional parts" },
+    { id: "pp3", name: "Quality 0.15mm", lh: "0.15", infill: "30", sup: "Tree", spd: "Normal",  mat: "PETG", notes: "Structural parts" },
+    { id: "pp4", name: "Detail 0.1mm",   lh: "0.10", infill: "40", sup: "Tree", spd: "Quality", mat: "PETG", notes: "Fine detail work" },
+  ]);
+  const [selPro,      setSelPro]      = useState("pp2");
+  const [mdata,       setMdata]       = useState({});
+  const [toast,       setToast]       = useState(null);
+
+
+
+
+
+
+  const tt       = useRef();
+  const pidRef   = useRef(pid);
+  const iidRef   = useRef(iid);
+  const projsRef = useRef(projs);
+  const editRef  = useRef(editMd);
+
+  useEffect(() => { pidRef.current   = pid;    }, [pid]);
+  useEffect(() => { iidRef.current   = iid;    }, [iid]);
+  useEffect(() => { projsRef.current = projs;  }, [projs]);
+  useEffect(() => { editRef.current  = editMd; }, [editMd]);
+
+
+
+  const selP    = projs.find((p) => p.id === pid)   || null;
+  const selI    = iid ? selP?.iters.find((i) => i.id === iid) || null : null;
+
+
+  const curMd   = selI ? selI.md : (selP?.md || "");
+
+
+  const mdPath  = selP
+    ? `${selP.name.replace(/\s+/g, "-")}/${selI ? "Iteration.md" : "Project.md"}`
+    : "";
+
+  const printer = PRINTER_STATES[pidx];
+
+
+  const totalI  = projs.reduce((s, p) => s + p.iters.length, 0);
+  const totalF  = projs.reduce((s, p) => s + p.iters.reduce((s2, i) => s2 + i.files.length, 0), 0);
+
+
+  const sq      = search.toLowerCase().trim();
+  const dispP   = sq
+    ? projs.filter((p) =>
+        p.name.toLowerCase().includes(sq) ||
+        p.iters.some((i) => i.label.toLowerCase().includes(sq)))
+    : projs;
+
+
+  const avTypes = (() => {
+    if (!selP) return [];
+    const files = selI ? selI.files : selP.iters.flatMap((i) => i.files);
+    const types = new Set(files.map((f) => f.type));
+    return ["stl", "3mf", "gcode"].filter((t) => types.has(t));
+  })();
+
+
+  const filtF = (files) => {
+    let result = files;
+    if (ff !== "all") result = result.filter((f) => f.type === ff);
+    if (fs.trim())    result = result.filter((f) => f.name.toLowerCase().includes(fs.toLowerCase()));
+    return result;
+  };
+
+
+
+
+  const notify = (message) => {
+    clearTimeout(tt.current);
+    setToast(message);
+    tt.current = setTimeout(() => setToast(null), 3000);
+  };
+
+
+
+
+  const refreshProjects = async (keepSelection, focusName) => {
+    try {
+      const api    = await waitForApi();
+      const bundle = await fetchProjectBundle(api);
+      const loaded = bundle.map(({ project, versions }) => normalizeProject(project, versions));
+
+
+      const merged = mergeNotes(loaded, projsRef.current);
+
+
+      let nextPid = null;
+      if (focusName) {
+        const focus = merged.find((p) => p.name === focusName);
+        nextPid = focus ? focus.id : null;
+      }
+      if (!nextPid) {
+        nextPid = keepSelection && pidRef.current && merged.some((p) => p.id === pidRef.current)
+          ? pidRef.current
+          : (merged[0]?.id || null);
+      }
+
+
+      let nextIid = null;
+      if (keepSelection && iidRef.current && nextPid) {
+        const p = merged.find((proj) => proj.id === nextPid);
+        if (p && p.iters.some((it) => it.id === iidRef.current)) {
+          nextIid = iidRef.current;
+        }
+      }
+
+      setProjs(merged);
+      setPid(nextPid);
+      setIid(nextIid);
+      setSelFile(null);
     } catch (_) {
       notify("Failed to load projects");
     }

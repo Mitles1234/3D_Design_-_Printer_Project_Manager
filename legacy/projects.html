@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Design Project Manager</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="projects.css">
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function () {
+	const root = document.getElementById("root");
+	const showError = (message) => {
+		if (!root) return;
+		root.innerHTML =
+			'<div style="padding:24px;color:#E53E3E;font-size:13px;font-family:monospace;background:#FFF5F5;margin:16px;border-radius:8px;border:1px solid #FEB2B2"><strong>Error:</strong> ' +
+			String(message || "Failed to load Projects UI") +
+			"</div>";
+	};
+
+	const loadScript = (src) => new Promise((resolve, reject) => {
+		const script = document.createElement("script");
+		script.src = src;
+		script.onload = resolve;
+		script.onerror = () => reject(new Error(`Failed to load ${src}`));
+		document.head.appendChild(script);
+	});
+
+	window.addEventListener("error", (event) => {
+		if (!event || !event.message) return;
+		showError(event.message);
+	});
+
+	window.addEventListener("unhandledrejection", (event) => {
+		const reason = event && event.reason ? event.reason : "Unhandled promise rejection";
+		showError(reason && reason.message ? reason.message : String(reason));
+	});
+
+	const base = new URL(".", window.location.href);
+	const reactSrc = new URL("assets/vendor/react.production.min.js", base).toString();
+	const reactDomSrc = new URL("assets/vendor/react-dom.production.min.js", base).toString();
+	const appSrc = new URL("projects.js", base).toString();
+
+	Promise.resolve()
+		.then(() => (window.React && window.ReactDOM) ? null : loadScript(reactSrc).then(() => loadScript(reactDomSrc)))
+		.then(() => loadScript(appSrc))
+		.catch((err) => showError(err && err.message ? err.message : err));
+})();
+</script>
+</body>
+</html>
