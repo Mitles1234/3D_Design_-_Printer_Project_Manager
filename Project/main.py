@@ -8,15 +8,66 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 try:
-    from Project.core import equipment
+    from Project.core import equipment, project
 except ModuleNotFoundError:
     project_root = os.path.dirname(os.path.abspath(__file__))
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
-    from core import equipment
+    from core import equipment, project
 
 
 class API:
+    def CREATE_PROJECT(self, name, accent_colour):
+        return project.create_project(name, accent_colour)
+
+    def GET_PROJECT(self, project_id):
+        return project.get_project(project_id)
+
+    def LIST_PROJECTS(self):
+        return project.list_projects()
+
+    def UPDATE_PROJECT(self, project_id, fields):
+        return project.update_project(project_id, fields)
+
+    def DELETE_PROJECT(self, project_id):
+        return project.delete_project(project_id)
+
+    def CREATE_NODE(self, project_id, name):
+        return project.create_node(project_id, name)
+
+    def GET_NODE(self, project_id, node_id):
+        return project.get_node(project_id, node_id)
+
+    def LIST_NODES(self, project_id):
+        return project.list_nodes(project_id)
+
+    def UPDATE_NODE(self, project_id, node_id, fields):
+        return project.update_node(project_id, node_id, fields)
+
+    def DELETE_NODE(self, project_id, node_id):
+        return project.delete_node(project_id, node_id)
+
+    def CREATE_CONNECTION(self, project_id, from_node_id, to_node_id):
+        return project.create_connection(project_id, from_node_id, to_node_id)
+
+    def DELETE_CONNECTION(self, project_id, connection_id):
+        return project.delete_connection(project_id, connection_id)
+
+    def VALIDATE_CONNECTION(self, project_id):
+        return project.validate_connection(project_id)
+
+    def ADD_FILE(self, project_id, node_id, file):
+        return project.add_file(project_id, node_id, file)
+
+    def REMOVE_FILE(self, project_id, node_id, filename):
+        return project.remove_file(project_id, node_id, filename)
+
+    def LIST_FILES(self, project_id, node_id):
+        return project.list_files(project_id, node_id)
+
+    def GET_FILE(self, project_id, node_id, filename):
+        return project.get_file(project_id, node_id, filename)
+
     def ADD_PRINTER(self, name, IP_address, frontend_port, backend_port, model=None):
         return equipment.safe_add_printer(name, IP_address, frontend_port, backend_port, model)
     
