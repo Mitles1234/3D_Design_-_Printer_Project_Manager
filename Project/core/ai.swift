@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 
 let prompt = CommandLine.arguments.dropFirst().joined(separator: " ")
-let defaultPrompt = "Explain Newton's first law in one sentence."
+let defaultPrompt = "Generate Just a Random Project Name, do not give explanation, just give the name."
 let message = prompt.isEmpty ? defaultPrompt : prompt
 
 /// Send a prompt to Apple Intelligence and get text back.
