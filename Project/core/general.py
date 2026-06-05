@@ -6,6 +6,7 @@ PRESETS = {
     "project":  (4, 2, 4),
     "filament": (3, 3, 3),
     "printer":  (2, 2, 2, 2),
+    "node":     (3, 2, 3)
 }
 
 def unique_id(preset=None, *groups, chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"):
