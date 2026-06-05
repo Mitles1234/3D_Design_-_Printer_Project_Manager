@@ -479,4 +479,4 @@ def printer_status(IP_address, backend_port=7125, frontend_port=None, include_te
     return "red", "Offline"
 
 
-print(printer_status("192.168.0.170", 7125, 4409))
+#print(printer_status("192.168.0.170", 7125, 4409))
