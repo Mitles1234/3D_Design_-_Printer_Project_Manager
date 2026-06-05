@@ -1,3 +1,149 @@
+.layout {
+	display: flex;
+	height: 100vh;
+	flex-direction: column;
+}
+
+.page-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 28px;
+	height: 56px;
+	border-bottom: 1px solid var(--border);
+	background: var(--panel);
+	flex-shrink: 0;
+	z-index: 10;
+}
+
+.header-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.header-message {
+	font-family: var(--mono);
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	color: var(--text-dim);
+	min-width: 0;
+	max-width: 180px;
+	text-align: right;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.header-search {
+	display: none;
+	align-items: center;
+	gap: 8px;
+}
+
+.header-search .search-field {
+	min-width: 240px;
+}
+
+.header-actions.search-open .header-search {
+	display: flex;
+}
+
+.header-actions.search-open #printer-search-open {
+	display: none;
+}
+
+.header-actions.search-open #printer-new {
+	display: none;
+}
+
+.header-actions.search-open .header-message {
+	display: none;
+}
+
+.button-action {
+	border: none;
+	background: var(--amber);
+	color: #ffffff;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: var(--sans);
+	padding: 8px 18px;
+	border-radius: 100px;
+	cursor: pointer;
+	line-height: 1;
+	transition: opacity 0.1s;
+}
+
+.button-action:hover {
+	opacity: 0.88;
+}
+
+.button-action.ghost {
+	background: transparent;
+	color: var(--amber);
+	border: 1px solid var(--amber);
+}
+
+.header-stats {
+	display: flex;
+	gap: 28px;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--text-muted);
+	letter-spacing: 0.05em;
+}
+
+.header-stat-label {
+	font-weight: 400;
+}
+
+.header-stats strong {
+	color: var(--text);
+	font-weight: 600;
+	letter-spacing: 0;
+}
+
+
+.printers-panel::-webkit-scrollbar { width: 5px; }
+.printers-panel::-webkit-scrollbar-track { background: transparent; }
+.printers-panel::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+
+.panel-heading {
+	font-family: var(--mono);
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.14em;
+	color: var(--text-dim);
+	text-transform: uppercase;
+	margin-bottom: 18px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.panel-heading::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: var(--border);
+}
+
+.main {
+	display: flex;
+	flex: 1;
+	overflow: hidden;
+}
+
+.printers-panel {
+	flex: 1;
+	overflow-y: auto;
+	padding: 24px 28px;
+	border-right: 1px solid var(--border);
+	background: var(--bg);
+}
+
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
