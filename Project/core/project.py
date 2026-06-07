@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from .general import *
-from .ai import run_ai
+#from .ai import run_ai
 
 #--- Generic ---
 def _now_iso():
@@ -44,13 +44,14 @@ def _new_id(prefix, *groups):
 
 
 #--- Project Functions ---
-def create_project(name, accent_colour):
+def create_project(name, accent_colour, description=""):
     # Creates a New Project
     projects = _load_projects()
     now = _now_iso()
     project = {
         "project_id": _new_id("proj"),
         "project_name": name,
+        "description": description,
         "accent_colour": accent_colour,
         "collapsed": False,
         "created_at": now,

@@ -541,3 +541,133 @@ body {
   font-family: var(--mono);
   letter-spacing: 0.05em;
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s;
+}
+
+.modal-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 28px;
+  width: 360px;
+  transform: translateY(8px);
+  transition: transform 0.18s;
+}
+
+.modal-backdrop.open .modal { transform: translateY(0); }
+
+.modal-title {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--amber);
+  letter-spacing: 0.06em;
+  margin-bottom: 20px;
+}
+
+/* --- Name + colour dot row (shared by project and filament modals) --- */
+.name-colour-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.name-colour-row .form-input {
+  flex: 1;
+}
+
+.colour-picker-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.colour-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+
+.colour-swatch:hover {
+  border-color: var(--amber);
+}
+
+.colour-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* --- Colour popover (shared by project and filament pickers) --- */
+.colour-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(6, 22px);
+  gap: 9px;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+
+.colour-popover.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.colour-popover-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  position: relative;
+  transition: transform 0.1s;
+  box-shadow: 0 0 0 2px transparent, 0 0 0 3px rgba(148, 163, 184, 0.45);
+}
+
+.colour-popover-swatch:hover {
+  transform: scale(1.15);
+}
+
+.colour-popover-swatch.selected {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 2px transparent, 0 0 0 3px rgba(148, 163, 184, 0.45), 0 0 0 4px transparent, 0 0 0 5px var(--blue);
+}
+
+.colour-popover-swatch.selected::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+}

@@ -67,20 +67,29 @@
       <div class="modal-title" id="printer-modal-title">ADD PRINTER</div>
       <div class="form-group">
         <label class="form-label">Name</label>
-        <input type="text" class="form-input" id="p-name" placeholder="e.g. Amazing Kup">
+        <div class="name-colour-row">
+          <input type="text" class="form-input" id="p-name" placeholder="e.g. Amazing Kup">
+          <div class="colour-picker-wrap">
+            <button class="colour-swatch" id="p-colour-swatch" type="button" onclick="toggleColourPicker()">
+              <span class="colour-dot" id="p-colour-dot"></span>
+            </button>
+            <div class="colour-popover" id="p-colour-popover"></div>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Description</label>
-        <input type="text" class="form-input" id="p-model" placeholder="e.g. A Truely Incredible Kup">
+        <input type="text" class="form-input" id="p-description" placeholder="e.g. A Truly Incredible Kup">
       </div>
       <div class="modal-actions">
-        <button class="button-cancel" type="button" onclick="closePrinterModal()">Cancel</button>
+        <button class="button-cancel" type="button" onclick="closeProjectModal()">Cancel</button>
         <button class="button-danger" type="button" id="printer-remove" onclick="removeProjectFromModal()">Remove</button>
         <button class="button-confirm" type="button" id="printer-confirm" onclick="confirmProjectModal()">Add Project</button>
       </div>
     </div>
   </div>
     
-    <script src="home.js"></script>
+    <script src="shared.js"></script>
+    <script src="projects.js"></script>
 </body>
 </html>

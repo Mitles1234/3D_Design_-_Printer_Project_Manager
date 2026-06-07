@@ -17,8 +17,8 @@ except ModuleNotFoundError:
 
 
 class API:
-    def CREATE_PROJECT(self, name, accent_colour):
-        return project.create_project(name, accent_colour)
+    def CREATE_PROJECT(self, name, accent_colour, description=""):
+        return project.create_project(name, accent_colour, description)
 
     def GET_PROJECT(self, project_id):
         return project.get_project(project_id)
