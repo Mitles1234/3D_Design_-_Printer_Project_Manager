@@ -84,7 +84,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Description</label>
-          <input type="text" class="form-input" id="p-description" placeholder="e.g. A Truly Incredible Kup">
+          <textarea class="form-input form-description" id="p-description" placeholder="e.g. A Truly Incredible Kup"></textarea>
         </div>
         <div class="modal-actions">
           <button class="button-cancel" type="button" onclick="closeProjectModal()">Cancel</button>
@@ -114,6 +114,48 @@
     </div>
   </div>
     
+  <!-- REVISION MODAL -->
+  <div class="modal-backdrop" id="revision-modal">
+    <div class="modal-pair">
+
+      <!-- REVISION FORM -->
+      <div class="modal">
+        <div class="modal-title">NEW REVISION</div>
+        <div class="form-group">
+          <label class="form-label">Revision Name</label>
+          <input type="text" class="form-input" id="r-name" placeholder="e.g. Capacity Upgrade">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Changes &amp; Improvements</label>
+          <textarea class="form-input form-description" id="r-description" placeholder="e.g. Increased Kup Capacity"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="button-cancel" type="button" onclick="closeRevisionModal()">Cancel</button>
+          <button class="button-confirm" type="button" onclick="confirmRevisionModal()">Add Revision</button>
+        </div>
+      </div>
+
+      <!-- AI ASSISTANT PANEL -->
+      <div class="ai-panel-wrap">
+        <div class="modal ai-panel">
+          <div class="modal-title">AI ASSISTANT</div>
+          <div class="form-group ai-prompt-group">
+            <label class="form-label">Describe the changes you made</label>
+            <textarea class="form-input form-textarea" id="r-ai-prompt"
+              placeholder="e.g. Switched to ASA, widened the flanges by 3mm, added two mounting tabs on the rear face"></textarea>
+          </div>
+          <div class="ai-btn-wrap" id="r-ai-btn-wrap">
+            <button class="button-ai" type="button" id="r-ai-generate-btn" onclick="generateRevisionWithAI()">
+              <i class="ti ti-sparkles" aria-hidden="true"></i>
+              Generate
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
     <script src="shared.js"></script>
     <script src="projects.js"></script>
 </body>

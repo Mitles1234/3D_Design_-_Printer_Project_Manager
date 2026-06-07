@@ -23,6 +23,9 @@ class API:
     def GENERATE_PROJECT_DETAILS(self, description):
         return ai.generate_project_details(description)
 
+    def GENERATE_REVISION_DETAILS(self, description):
+        return ai.generate_revision_details(description)
+
     def GET_PROJECT(self, project_id):
         return project.get_project(project_id)
 
@@ -35,8 +38,8 @@ class API:
     def DELETE_PROJECT(self, project_id):
         return project.delete_project(project_id)
 
-    def CREATE_NODE(self, project_id, name):
-        return project.create_node(project_id, name)
+    def CREATE_NODE(self, project_id, name, description=""):
+        return project.create_node(project_id, name, description)
 
     def GET_NODE(self, project_id, node_id):
         return project.get_node(project_id, node_id)

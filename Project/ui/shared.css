@@ -498,6 +498,14 @@ body {
   border-color: var(--amber);
 }
 
+.form-input.input-error {
+  border-color: var(--red);
+}
+
+.form-input.input-error:focus {
+  border-color: var(--red);
+}
+
 .form-select {
   width: 100%;
   background: var(--bg);
