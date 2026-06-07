@@ -1,6 +1,5 @@
 from __future__ import annotations
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -26,3 +25,22 @@ def ai_process(prompt: str) -> None:
         print(result)
     except RuntimeError as error:
         print(error)
+
+
+def generate_project_details(description: str) -> dict:
+    desc = description.strip()
+
+    name = _run_ai(
+        f'Give a short, creative name for a 3D printing project described as: "{desc}". '
+        f'Reply with just the name, nothing else.'
+    )
+
+    summary = _run_ai(
+        f'Write one sentence describing a 3D printing project described as: "{desc}". '
+        f'Reply with just the sentence, nothing else.'
+    )
+
+    def _clean(s: str) -> str:
+        return s.strip().strip('"').strip("'").strip()
+
+    return {"name": _clean(name), "description": _clean(summary)}

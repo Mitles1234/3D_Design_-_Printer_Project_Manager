@@ -8,17 +8,20 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 try:
-    from Project.core import equipment, project
+    from Project.core import equipment, project, ai
 except ModuleNotFoundError:
     project_root = os.path.dirname(os.path.abspath(__file__))
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
-    from core import equipment, project
+    from core import equipment, project, ai
 
 
 class API:
     def CREATE_PROJECT(self, name, accent_colour, description=""):
         return project.create_project(name, accent_colour, description)
+
+    def GENERATE_PROJECT_DETAILS(self, description):
+        return ai.generate_project_details(description)
 
     def GET_PROJECT(self, project_id):
         return project.get_project(project_id)

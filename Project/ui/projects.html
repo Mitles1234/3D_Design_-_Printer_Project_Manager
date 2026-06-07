@@ -62,30 +62,55 @@
     </div>
   </div>
 
+  <div class="toast" id="ai-toast"></div>
+
   <div class="modal-backdrop" id="printer-modal">
-    <div class="modal">
-      <div class="modal-title" id="printer-modal-title">ADD PRINTER</div>
-      <div class="form-group">
-        <label class="form-label">Name</label>
-        <div class="name-colour-row">
-          <input type="text" class="form-input" id="p-name" placeholder="e.g. Amazing Kup">
-          <div class="colour-picker-wrap">
-            <button class="colour-swatch" id="p-colour-swatch" type="button" onclick="toggleColourPicker()">
-              <span class="colour-dot" id="p-colour-dot"></span>
+    <div class="modal-pair">
+
+      <!-- MAIN PROJECT MODAL -->
+      <div class="modal">
+        <div class="modal-title" id="printer-modal-title">NEW PROJECT</div>
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <div class="name-colour-row">
+            <input type="text" class="form-input" id="p-name" placeholder="e.g. Amazing Kup">
+            <div class="colour-picker-wrap">
+              <button class="colour-swatch" id="p-colour-swatch" type="button" onclick="toggleColourPicker()">
+                <span class="colour-dot" id="p-colour-dot"></span>
+              </button>
+              <div class="colour-popover" id="p-colour-popover"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-input" id="p-description" placeholder="e.g. A Truly Incredible Kup">
+        </div>
+        <div class="modal-actions">
+          <button class="button-cancel" type="button" onclick="closeProjectModal()">Cancel</button>
+          <button class="button-danger" type="button" id="printer-remove" onclick="removeProjectFromModal()">Remove</button>
+          <button class="button-confirm" type="button" id="printer-confirm" onclick="confirmProjectModal()">Add Project</button>
+        </div>
+      </div>
+
+      <!-- AI ASSISTANT PANEL -->
+      <div class="ai-panel-wrap">
+        <div class="modal ai-panel">
+          <div class="modal-title">AI ASSISTANT</div>
+          <div class="form-group ai-prompt-group">
+            <label class="form-label">Describe what you're making</label>
+            <textarea class="form-input form-textarea" id="ai-user-prompt"
+              placeholder="e.g. A modular wall-mounted organiser for workshop tools with snap-fit clips"></textarea>
+          </div>
+          <div class="ai-btn-wrap" id="ai-btn-wrap">
+            <button class="button-ai" type="button" id="ai-generate-btn" onclick="generateWithAI()">
+              <i class="ti ti-sparkles" aria-hidden="true"></i>
+              Generate
             </button>
-            <div class="colour-popover" id="p-colour-popover"></div>
           </div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <input type="text" class="form-input" id="p-description" placeholder="e.g. A Truly Incredible Kup">
-      </div>
-      <div class="modal-actions">
-        <button class="button-cancel" type="button" onclick="closeProjectModal()">Cancel</button>
-        <button class="button-danger" type="button" id="printer-remove" onclick="removeProjectFromModal()">Remove</button>
-        <button class="button-confirm" type="button" id="printer-confirm" onclick="confirmProjectModal()">Add Project</button>
-      </div>
+
     </div>
   </div>
     

@@ -37,10 +37,83 @@ function pickColour(hex) {
     });
 }
 
-document.addEventListener('click', e => {
+document.addEventListener('mousedown', e => {
     const wrap = document.getElementById('p-colour-swatch')?.closest('.colour-picker-wrap');
     if (wrap && !wrap.contains(e.target)) closeColourPicker();
 });
+
+// Darken the generate button while the textarea has content
+document.getElementById('ai-user-prompt').addEventListener('input', function () {
+    const hasText = this.value.trim().length > 0;
+    document.getElementById('ai-generate-btn').classList.toggle('ready', hasText);
+    document.getElementById('ai-btn-wrap').classList.toggle('ready', hasText);
+});
+
+// --- API handle (mirrors equipment.js pattern) ---
+function getApi() {
+    try {
+        if (window.pywebview?.api) return window.pywebview.api;
+    } catch (_) {}
+    try {
+        if (window.parent && window.parent !== window && window.parent.pywebview?.api)
+            return window.parent.pywebview.api;
+    } catch (_) {}
+    return null;
+}
+
+// --- Toast ---
+function showToast(message) {
+    const toast = document.getElementById('ai-toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+// --- AI Generation ---
+async function generateWithAI() {
+    const prompt = document.getElementById('ai-user-prompt').value.trim();
+    if (!prompt) {
+        document.getElementById('ai-user-prompt').focus();
+        return;
+    }
+
+    const btn = document.getElementById('ai-generate-btn');
+    const wrap = document.getElementById('ai-btn-wrap');
+
+    const api = getApi();
+    if (!api) {
+        showToast('ERROR: API NOT READY');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.classList.remove('error', 'ready');
+    wrap.classList.remove('error', 'ready');
+    wrap.classList.add('generating');
+
+    try {
+        const result = await api.GENERATE_PROJECT_DETAILS(prompt);
+        if (result.name) document.getElementById('p-name').value = result.name;
+        if (result.description) document.getElementById('p-description').value = result.description;
+    } catch (err) {
+        const msg = err?.message || err?.toString() || 'Unknown error';
+        console.error('AI generation failed:', msg);
+        btn.classList.add('error');
+        wrap.classList.add('error');
+        showToast('AI failed: ' + msg.slice(0, 60));
+        setTimeout(() => {
+            btn.classList.remove('error');
+            wrap.classList.remove('error');
+        }, 3500);
+    } finally {
+        btn.disabled = false;
+        wrap.classList.remove('generating');
+        // Restore ready state if textarea still has content
+        const hasText = document.getElementById('ai-user-prompt').value.trim().length > 0;
+        btn.classList.toggle('ready', hasText && !btn.classList.contains('error'));
+        wrap.classList.toggle('ready', hasText && !wrap.classList.contains('error'));
+    }
+}
 
 // --- Modal Open / Close ---
 function openProjectModal() {
@@ -53,6 +126,9 @@ function openProjectModal() {
 
     document.getElementById('p-name').value = '';
     document.getElementById('p-description').value = '';
+    document.getElementById('ai-user-prompt').value = '';
+    document.getElementById('ai-btn-wrap').classList.remove('generating', 'error', 'ready');
+    document.getElementById('ai-generate-btn').classList.remove('error', 'ready');
 
     pickColour(COLOURS[0].hex);
 

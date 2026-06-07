@@ -1,1 +1,191 @@
+/* --- Modal pair: equal-height side-by-side layout --- */
+.modal-pair {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
 
+/* --- AI gradient border (Apple Intelligence style) --- */
+@property --ai-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes ai-spin {
+  to { --ai-angle: 360deg; }
+}
+
+.ai-panel-wrap {
+  --ai-angle: 0deg;
+  animation: ai-spin 5s linear infinite;
+  position: relative;
+  isolation: isolate;
+  border-radius: 16px;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  background: conic-gradient(
+    from var(--ai-angle) at 50% 50%,
+    #3b82f6 0%,
+    #8b5cf6 18%,
+    #ec4899 36%,
+    #f97316 52%,
+    #22c55e 68%,
+    #06b6d4 84%,
+    #3b82f6 100%
+  );
+}
+
+.ai-panel-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 22px;
+  background: conic-gradient(
+    from var(--ai-angle) at 50% 50%,
+    #3b82f6 0%,
+    #8b5cf6 18%,
+    #ec4899 36%,
+    #f97316 52%,
+    #22c55e 68%,
+    #06b6d4 84%,
+    #3b82f6 100%
+  );
+  filter: blur(18px);
+  opacity: 0.22;
+  z-index: -1;
+  animation: ai-spin 5s linear infinite;
+}
+
+/* AI panel fills the wrapper height */
+.ai-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: none !important;
+  border-radius: 14px;
+}
+
+.ai-prompt-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-textarea {
+  flex: 1;
+  resize: none;
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+
+/* --- Snake button --- */
+@property --snake-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes snake-run {
+  to { --snake-angle: 360deg; }
+}
+
+/* Wrapper provides the border ring — button stays fully opaque inside */
+.ai-btn-wrap {
+  --snake-angle: 0deg;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--border-light);
+  transition: background 0.2s;
+}
+
+.ai-btn-wrap.ready {
+  background: var(--amber);
+}
+
+.ai-btn-wrap.generating {
+  background: conic-gradient(
+    from var(--snake-angle),
+    transparent 0deg,
+    transparent 322deg,
+    #0f2f3a 326deg,
+    #1d4ed8 348deg,
+    #93c5fd 356deg,
+    transparent 360deg
+  );
+  animation: snake-run 0.9s linear infinite;
+}
+
+.ai-btn-wrap.error {
+  background: var(--red);
+  animation: none;
+}
+
+/* Button states — all fully opaque so the wrapper gradient never bleeds through */
+.button-ai {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
+  /* opaque equivalent of var(--amber-glow) over white */
+  background: #e0f2f6;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Textarea has content — button signals it's ready */
+.button-ai.ready {
+  background: #c5e4ef;
+  color: var(--amber-dim);
+}
+
+/* Generating — pale but fully opaque */
+.ai-btn-wrap.generating .button-ai {
+  background: #f0f9fb;
+  color: var(--text-faint);
+}
+
+.button-ai:disabled {
+  cursor: not-allowed;
+}
+
+.button-ai.error {
+  background: #fce8e8;
+  color: var(--red);
+}
+
+/* --- Toast notification --- */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--red);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 500;
+  white-space: nowrap;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

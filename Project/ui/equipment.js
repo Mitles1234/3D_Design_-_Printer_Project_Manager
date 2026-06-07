@@ -717,7 +717,7 @@ document.getElementById('filament-modal').addEventListener('click', (event) => {
   if (event.target === document.getElementById('filament-modal')) closeFilamentModal();
 });
 
-document.addEventListener('click', (event) => {
+document.addEventListener('mousedown', (event) => {
   const wrap = document.getElementById('f-colour-swatch')?.closest('.colour-picker-wrap');
   if (wrap && !wrap.contains(event.target)) closeFilamentColourPicker();
 });

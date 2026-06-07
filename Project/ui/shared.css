@@ -489,6 +489,7 @@ body {
   font-family: var(--sans);
   font-size: 13px;
   color: var(--text);
+  caret-color: var(--text);
   outline: none;
   transition: border-color 0.15s;
 }
