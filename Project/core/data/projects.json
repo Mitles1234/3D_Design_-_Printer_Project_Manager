@@ -1,24 +1,22 @@
 [
   {
-    "project_id": "proj_1234",
-    "project_name": "Fan Duct Assembly",
-    "accent_colour": "#1D9E75",
-    "collapsed": false,
-    "created_at": "2026-06-01T14:48:00.000Z",
-    "last_updated": "2026-06-01T14:48:00.000Z",
-    "connections": [
-      { "from": "node_abc", "to": "node_def" },
-      { "from": "node_abc", "to": "node_ghi" }
-    ],
+    "project_id": "proj_1ZXV-50-9STB",
+    "project_name": "Amazing Kup",
+    "description": "A Truely Amazing Kup",
+    "accent_colour": "#ef4444",
+    "collapsed": true,
+    "created_at": "2026-06-07T20:03:25.515320",
+    "last_updated": "2026-06-07T20:28:27.803009",
+    "connections": [],
     "nodes": [
       {
-        "node_id": "node_abc",
-        "node_name": "Initial concept",
-        "date": "2025-01-10",
-        "description": "First rough geometry",
-        "files": ["sketch.stl"],
-        "created_at": "2026-06-01T14:48:00.000Z",
-        "last_updated": "2026-06-01T14:48:00.000Z"
+        "node_id": "node_FSC-X60",
+        "node_name": "ABS Upgrade",
+        "date": "2026-06-07",
+        "description": "The ABS Plastic was replaced with a more durable and resistant material, enhancing the product's strength and longevity.",
+        "files": [],
+        "created_at": "2026-06-07T20:03:45.531648",
+        "last_updated": "2026-06-07T20:03:45.531648"
       }
     ]
   }

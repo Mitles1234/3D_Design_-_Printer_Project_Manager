@@ -1,23 +1,3 @@
-const COLORS = [
-  { hex: '#ef4444', name: 'Red' },
-  { hex: '#f97316', name: 'Orange' },
-  { hex: '#f59e0b', name: 'Amber' },
-  { hex: '#eab308', name: 'Yellow' },
-  { hex: '#84cc16', name: 'Lime' },
-  { hex: '#22c55e', name: 'Green' },
-  { hex: '#10b981', name: 'Emerald' },
-  { hex: '#14b8a6', name: 'Teal' },
-  { hex: '#06b6d4', name: 'Cyan' },
-  { hex: '#3b82f6', name: 'Blue' },
-  { hex: '#6366f1', name: 'Indigo' },
-  { hex: '#8b5cf6', name: 'Violet' },
-  { hex: '#ec4899', name: 'Pink' },
-  { hex: '#ffffff', name: 'White' },
-  { hex: '#94a3b8', name: 'Silver' },
-  { hex: '#1e1e2e', name: 'Black' },
-  { hex: '#78350f', name: 'Brown' },
-  { hex: '#fde68a', name: 'Cream' },
-];
 
 const DEFAULT_DIAMETER = 1.75;
 const CUSTOM_MATERIAL_VALUE = '__custom__';
@@ -27,7 +7,7 @@ TRANSPARENT_DRAG_IMAGE.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywA
 let printers = [];
 let filaments = [];
 let dragData = null;
-let selectedColor = COLORS[0].hex;
+let selectedColor = COLOURS[0].hex;
 let activeFilter = 'ALL';
 let printerSearch = '';
 let filamentModalMode = 'add';
@@ -511,11 +491,13 @@ function moveGhost(event) {
 function openFilamentModalInternal() {
   filamentModalMode = 'add';
   activeFilamentId = null;
-  selectedColor = COLORS[0].hex;
+  selectedColor = COLOURS[0].hex;
   document.getElementById('f-name').value = '';
   document.getElementById('f-material').value = 'PLA';
   document.getElementById('f-material-custom').value = '';
   document.getElementById('f-weight').value = '';
+  const dot = document.getElementById('f-colour-dot');
+  if (dot) dot.style.background = selectedColor;
   syncMaterialInput();
   buildColorGrid();
   document.querySelector('#filament-modal .modal-title').textContent = 'ADD FILAMENT';
@@ -529,6 +511,8 @@ function openFilamentModalForEdit(filamentId) {
   filamentModalMode = 'edit';
   activeFilamentId = filamentId;
   selectedColor = filament.color || COLORS[0].hex;
+  const dot = document.getElementById('f-colour-dot');
+  if (dot) dot.style.background = selectedColor;
   document.getElementById('f-name').value = filament.name;
 
   const materialSelect = document.getElementById('f-material');
@@ -551,6 +535,7 @@ function openFilamentModalForEdit(filamentId) {
 }
 
 function closeFilamentModal() {
+  closeFilamentColourPicker();
   document.getElementById('filament-modal').classList.remove('open');
 }
 
@@ -580,23 +565,35 @@ function getMaterialValue() {
 }
 
 function buildColorGrid() {
-  const grid = document.getElementById('color-grid');
-  grid.innerHTML = COLORS.map((color) => `
-    <div class="color-swatch ${color.hex === selectedColor ? 'selected' : ''}"
-      data-color="${color.hex}"
-      style="background:${color.hex};border:2px solid ${color.hex === '#ffffff' || color.hex === '#fde68a' ? '#555' : color.hex}"
-      title="${color.name}"></div>
-  `).join('');
-
-  grid.querySelectorAll('.color-swatch').forEach((swatch) => {
-    swatch.addEventListener('click', () => selectColor(swatch.dataset.color, swatch));
+  const popover = document.getElementById('f-colour-popover');
+  popover.innerHTML = '';
+  COLOURS.forEach(({ hex, name }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'colour-popover-swatch' + (hex === selectedColor ? ' selected' : '');
+    btn.style.background = hex;
+    btn.dataset.color = hex;
+    btn.title = name;
+    btn.addEventListener('click', () => selectColor(hex, btn));
+    popover.appendChild(btn);
   });
 }
 
 function selectColor(hex, el) {
   selectedColor = hex;
-  document.querySelectorAll('.color-swatch').forEach((swatch) => swatch.classList.remove('selected'));
+  document.querySelectorAll('#f-colour-popover .colour-popover-swatch').forEach((btn) => btn.classList.remove('selected'));
   el.classList.add('selected');
+  const dot = document.getElementById('f-colour-dot');
+  if (dot) dot.style.background = hex;
+}
+
+function toggleFilamentColourPicker() {
+  const popover = document.getElementById('f-colour-popover');
+  popover.classList.contains('open') ? closeFilamentColourPicker() : popover.classList.add('open');
+}
+
+function closeFilamentColourPicker() {
+  document.getElementById('f-colour-popover').classList.remove('open');
 }
 
 async function confirmAddFilament() {
@@ -718,6 +715,11 @@ async function removePrinterFromModal() {
 
 document.getElementById('filament-modal').addEventListener('click', (event) => {
   if (event.target === document.getElementById('filament-modal')) closeFilamentModal();
+});
+
+document.addEventListener('mousedown', (event) => {
+  const wrap = document.getElementById('f-colour-swatch')?.closest('.colour-picker-wrap');
+  if (wrap && !wrap.contains(event.target)) closeFilamentColourPicker();
 });
 
 document.getElementById('printer-modal').addEventListener('click', (event) => {

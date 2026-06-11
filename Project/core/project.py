@@ -1,11 +1,9 @@
-import base64
 import json
 import os
-import shutil
 from datetime import datetime
 from pathlib import Path
 from .general import *
-from .ai import run_ai
+#from .ai import run_ai
 
 #--- Generic ---
 def _now_iso():
@@ -44,15 +42,50 @@ def _new_id(prefix, *groups):
     return f"{prefix}_{value}"
 
 
+# --- Folder helpers ---
+
+def _projects_dir() -> Path:
+    return Path(__file__).resolve().parent / "data" / "projects"
+
+def _project_dir(project_id: str) -> Path:
+    return _projects_dir() / project_id
+
+def _node_dir(project_id: str, node_id: str) -> Path:
+    return _project_dir(project_id) / node_id
+
+def _init_project_folder(project_id: str, name: str, description: str = "") -> None:
+    folder = _project_dir(project_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    notes = folder / "notes.md"
+    if not notes.exists():
+        lines = [f"# {name}", ""]
+        if description:
+            lines += ["## Description", "", description, ""]
+        lines += ["## Notes", "", ""]
+        notes.write_text("\n".join(lines), encoding="utf-8")
+
+def _init_node_folder(project_id: str, node_id: str, name: str, description: str = "") -> None:
+    folder = _node_dir(project_id, node_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    notes = folder / "notes.md"
+    if not notes.exists():
+        lines = [f"# {name}", ""]
+        if description:
+            lines += ["## Changes & Improvements", "", description, ""]
+        lines += ["## Notes", "", ""]
+        notes.write_text("\n".join(lines), encoding="utf-8")
+
+
 
 #--- Project Functions ---
-def create_project(name, accent_colour):
+def create_project(name, accent_colour, description=""):
     # Creates a New Project
     projects = _load_projects()
     now = _now_iso()
     project = {
         "project_id": _new_id("proj"),
         "project_name": name,
+        "description": description,
         "accent_colour": accent_colour,
         "collapsed": False,
         "created_at": now,
@@ -62,6 +95,7 @@ def create_project(name, accent_colour):
     }
     projects.append(project)
     _write_projects(projects)
+    _init_project_folder(project["project_id"], name, description)
     return project
 
 def get_project(project_id):
@@ -101,7 +135,7 @@ def delete_project(project_id):
 
 
 #--- Node Functions ---
-def create_node(project_id, name):
+def create_node(project_id, name, description=""):
     # Creates a new node in a project
     projects = _load_projects()
     now = _now_iso()
@@ -111,7 +145,7 @@ def create_node(project_id, name):
                 "node_id": _new_id("node", 3, 3, 3),
                 "node_name": name,
                 "date": now.split("T")[0],
-                "description": "",
+                "description": description,
                 "files": [],
                 "created_at": now,
                 "last_updated": now,
@@ -119,6 +153,7 @@ def create_node(project_id, name):
             project.setdefault("nodes", []).append(node)
             project["last_updated"] = now
             _write_projects(projects)
+            _init_node_folder(project_id, node["node_id"], name, description)
             return node
     return None
 
