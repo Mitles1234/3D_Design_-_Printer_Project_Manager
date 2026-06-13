@@ -62,6 +62,12 @@ class API:
     def VALIDATE_CONNECTION(self, project_id):
         return project.validate_connection(project_id)
 
+    def GET_NODE_NOTES(self, project_id, node_id):
+        return project.get_node_notes(project_id, node_id)
+
+    def SET_NODE_NOTES(self, project_id, node_id, content):
+        return project.set_node_notes(project_id, node_id, content)
+
     def ADD_FILE(self, project_id, node_id, file):
         return project.add_file(project_id, node_id, file)
 

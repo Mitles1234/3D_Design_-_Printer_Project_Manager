@@ -321,6 +321,18 @@ def list_files(project_id, node_id):
         return []
     return node.get("files", [])
 
+def get_node_notes(project_id: str, node_id: str) -> str:
+    notes_path = _node_dir(project_id, node_id) / "notes.md"
+    if notes_path.exists():
+        return notes_path.read_text(encoding="utf-8")
+    return ""
+
+def set_node_notes(project_id: str, node_id: str, content: str) -> bool:
+    folder = _node_dir(project_id, node_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "notes.md").write_text(content, encoding="utf-8")
+    return True
+
 def get_file(project_id, node_id, filename):
     # Gets a file from a node
     node = get_node(project_id, node_id)

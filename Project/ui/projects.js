@@ -6,6 +6,9 @@ let modalMode = 'add';
 let activeProjectId = null;
 let selectedAccentColour = COLOURS[0].hex;
 
+// --- Sidebar state ---
+let selPid = null, selNid = null, selSbTab = 'notes', sbMdEdit = false, sbNotes = '';
+
 // --- Build colour popover swatches (runs once on load) ---
 (function buildColourPopover() {
     const popover = document.getElementById('p-colour-popover');
@@ -66,6 +69,31 @@ document.getElementById('p-name').addEventListener('input', function () {
 document.getElementById('r-name').addEventListener('input', function () {
     this.classList.remove('input-error');
 });
+
+// --- Helpers ---
+function fmtDate(iso) {
+    if (!iso) return 'No date';
+    const parts = iso.split('-');
+    if (parts.length < 3) return iso;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+}
+
+function renderMd(raw) {
+    if (!raw) return '';
+    return raw
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        .replace(/^---$/gm, '<hr>')
+        .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+        .replace(/^(?!<[hul\d]|<hr)(.+)$/gm, '<p>$1</p>');
+}
 
 // --- API handle (mirrors equipment.js pattern) ---
 function getApi() {
@@ -133,11 +161,176 @@ async function generateWithAI() {
     }
 }
 
+// --- Sidebar ---
+async function selectNode(projectId, nodeId) {
+    if (selPid === projectId && selNid === nodeId) {
+        selPid = null; selNid = null; sbNotes = ''; sbMdEdit = false;
+    } else {
+        selPid = projectId; selNid = nodeId;
+        selSbTab = 'notes'; sbMdEdit = false; sbNotes = '';
+        const api = getApi();
+        if (api) {
+            try { sbNotes = (await api.GET_NODE_NOTES(projectId, nodeId)) || ''; }
+            catch (_) { sbNotes = ''; }
+        }
+    }
+    document.querySelectorAll('.node-card').forEach(c => {
+        c.classList.toggle('node-card-sel', c.dataset.pid === selPid && c.dataset.nid === selNid);
+    });
+    renderSidebar();
+}
+
+function renderSidebar() {
+    const sb = document.getElementById('proj-sidebar');
+    if (!sb) return;
+
+    if (!selPid || !selNid) {
+        sb.innerHTML = `<div class="sb-empty"><i class="ti ti-cursor-text" style="font-size:26px"></i><span>Click any revision<br>to view its details</span></div>`;
+        return;
+    }
+
+    const proj = PROJECTS.find(p => p.project_id === selPid);
+    const node = proj?.nodes?.find(n => n.node_id === selNid);
+    if (!proj || !node) { selPid = null; selNid = null; renderSidebar(); return; }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-wrap';
+    wrap.style.setProperty('--sb-ac', proj.accent_colour);
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'sb-hdr';
+    hdr.innerHTML = `
+        <div class="sb-name">${node.node_name}</div>
+        <div class="sb-proj-label">${proj.project_name}</div>
+        <div class="sb-date-row">
+          <div class="sb-date-pill"><i class="ti ti-calendar" style="font-size:10px"></i> ${fmtDate(node.date)}</div>
+        </div>`;
+    wrap.appendChild(hdr);
+
+    // Tabs
+    const tabs = document.createElement('div');
+    tabs.className = 'sb-tabs';
+    ['notes', 'files', 'details'].forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'sb-tab' + (selSbTab === t ? ' on' : '');
+        btn.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+        btn.addEventListener('click', () => { selSbTab = t; sbMdEdit = false; renderSidebar(); });
+        tabs.appendChild(btn);
+    });
+    wrap.appendChild(tabs);
+
+    // Panel
+    const panel = document.createElement('div');
+    panel.className = 'sb-panel';
+
+    if (selSbTab === 'notes') {
+        const mdWrap = document.createElement('div');
+        mdWrap.className = 'md-wrap';
+
+        if (sbMdEdit) {
+            const ta = document.createElement('textarea');
+            ta.className = 'sb-ta';
+            ta.value = sbNotes;
+            ta.addEventListener('input', () => { sbNotes = ta.value; });
+            mdWrap.appendChild(ta);
+            setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 20);
+
+            const fab = document.createElement('button');
+            fab.className = 'md-fab';
+            fab.title = 'Save notes';
+            fab.innerHTML = `<i class="ti ti-check"></i>`;
+            fab.addEventListener('click', async () => {
+                const api = getApi();
+                if (api) await api.SET_NODE_NOTES(selPid, selNid, sbNotes).catch(() => {});
+                sbMdEdit = false;
+                renderSidebar();
+            });
+            mdWrap.appendChild(fab);
+        } else {
+            const preview = document.createElement('div');
+            preview.className = 'md-preview';
+            const html = renderMd(sbNotes);
+            preview.innerHTML = html || '<p class="md-empty">No notes yet — click edit to add some.</p>';
+            mdWrap.appendChild(preview);
+
+            const fab = document.createElement('button');
+            fab.className = 'md-fab';
+            fab.title = 'Edit notes';
+            fab.innerHTML = `<i class="ti ti-pencil"></i>`;
+            fab.addEventListener('click', () => { sbMdEdit = true; renderSidebar(); });
+            mdWrap.appendChild(fab);
+        }
+        panel.appendChild(mdWrap);
+
+    } else if (selSbTab === 'files') {
+        const files = node.files || [];
+        if (files.length) {
+            const chipsWrap = document.createElement('div');
+            files.forEach(f => {
+                const chip = document.createElement('span');
+                chip.className = 'sb-file-chip';
+                chip.textContent = f;
+                chipsWrap.appendChild(chip);
+            });
+            panel.appendChild(chipsWrap);
+        } else {
+            const empty = document.createElement('span');
+            empty.style.cssText = 'font-size:12px;color:var(--text-faint);font-style:italic';
+            empty.textContent = 'No files attached yet';
+            panel.appendChild(empty);
+        }
+        const addBtn = document.createElement('button');
+        addBtn.className = 'sb-add';
+        addBtn.innerHTML = `<i class="ti ti-paperclip" style="font-size:12px"></i> Attach files`;
+        panel.appendChild(addBtn);
+
+    } else {
+        // Details tab
+        const rows = [
+            ['Project', proj.project_name],
+            ['Date', fmtDate(node.date)],
+            ['Description', node.description || '—'],
+        ];
+        rows.forEach(([k, v]) => {
+            const row = document.createElement('div');
+            row.className = 'sb-dr';
+            row.innerHTML = `<span class="sb-dk">${k}</span><span class="sb-dv">${v}</span>`;
+            panel.appendChild(row);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'sb-del-btn';
+        delBtn.innerHTML = `<i class="ti ti-trash" style="font-size:12px"></i> Delete revision`;
+        delBtn.addEventListener('click', async () => {
+            const api = getApi();
+            if (!api) return;
+            try {
+                await api.DELETE_NODE(selPid, selNid);
+                const p = PROJECTS.find(pr => pr.project_id === selPid);
+                if (p) {
+                    p.nodes = (p.nodes || []).filter(n => n.node_id !== selNid);
+                    p.connections = (p.connections || []).filter(c => c.from !== selNid && c.to !== selNid);
+                }
+                selPid = null; selNid = null;
+                renderProjectGrid();
+                updateStats();
+            } catch (e) { console.error('DELETE_NODE failed:', e); }
+        });
+        panel.appendChild(delBtn);
+    }
+
+    wrap.appendChild(panel);
+    sb.innerHTML = '';
+    sb.appendChild(wrap);
+}
+
 // --- Project grid ---
 function renderProjectGrid() {
     const grid = document.getElementById('printers-grid');
     grid.innerHTML = '';
     PROJECTS.forEach(proj => grid.appendChild(buildProjectCard(proj)));
+    renderSidebar();
 }
 
 function buildProjectCard(proj) {
@@ -206,8 +399,11 @@ function buildProjectCard(proj) {
         row.className = 'proj-nodes-row';
         nodes.forEach(node => {
             const card = document.createElement('div');
-            card.className = 'node-card';
+            card.className = 'node-card' + (node.node_id === selNid && proj.project_id === selPid ? ' node-card-sel' : '');
             card.style.setProperty('--proj-ac', proj.accent_colour);
+            card.dataset.pid = proj.project_id;
+            card.dataset.nid = node.node_id;
+            card.addEventListener('click', e => { e.stopPropagation(); selectNode(proj.project_id, node.node_id); });
 
             const nameEl = document.createElement('div');
             nameEl.className = 'node-card-name';
@@ -482,6 +678,8 @@ async function loadProjects(retries = 5) {
     renderProjectGrid();
     updateStats();
 }
+
+renderSidebar();
 
 if (window.pywebview) {
     loadProjects();

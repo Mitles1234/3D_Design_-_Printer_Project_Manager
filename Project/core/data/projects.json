@@ -4,20 +4,10 @@
     "project_name": "Amazing Kup",
     "description": "A Truely Amazing Kup",
     "accent_colour": "#ef4444",
-    "collapsed": true,
+    "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-07T20:28:27.803009",
+    "last_updated": "2026-06-13T14:31:34.700099",
     "connections": [],
-    "nodes": [
-      {
-        "node_id": "node_FSC-X60",
-        "node_name": "ABS Upgrade",
-        "date": "2026-06-07",
-        "description": "The ABS Plastic was replaced with a more durable and resistant material, enhancing the product's strength and longevity.",
-        "files": [],
-        "created_at": "2026-06-07T20:03:45.531648",
-        "last_updated": "2026-06-07T20:03:45.531648"
-      }
-    ]
+    "nodes": []
   }
 ]
