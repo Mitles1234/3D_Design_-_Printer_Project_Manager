@@ -179,12 +179,18 @@ function renderAll() {
   updateStats();
 }
 
-function updateStats() {
-  document.getElementById('stat-printers').textContent = printers.length;
-  document.getElementById('stat-spools').textContent = filaments.length;
-  const attached = filaments.filter((filament) => filament.printerId).length;
-  document.getElementById('stat-attached').textContent = attached;
-  document.getElementById('stat-avail').textContent = filaments.length - attached;
+async function updateStats() {
+  const api = getApiHandle();
+  if (!api) return;
+  try {
+    const stats = await api.GET_EQUIPMENT_STATS();
+    document.getElementById('stat-printers').textContent = stats.printers ?? 0;
+    document.getElementById('stat-spools').textContent = stats.spools ?? 0;
+    document.getElementById('stat-attached').textContent = stats.attached ?? 0;
+    document.getElementById('stat-avail').textContent = stats.available ?? 0;
+  } catch (e) {
+    console.error('GET_EQUIPMENT_STATS failed:', e);
+  }
 }
 
 function renderPrinters() {

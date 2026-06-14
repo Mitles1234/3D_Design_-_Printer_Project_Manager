@@ -6,8 +6,27 @@
     "accent_colour": "#ef4444",
     "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-13T14:31:34.700099",
+    "last_updated": "2026-06-14T15:46:27.151260",
     "connections": [],
-    "nodes": []
+    "nodes": [
+      {
+        "node_id": "node_XVX-KRF",
+        "node_name": "ABS Revamp",
+        "date": "2026-06-11",
+        "description": "The ABS Upgrade includes the addition of a more sophisticated braking control system with improved sensor technology and enhanced hydraulic pressure management, resulting in better stopping power and reduced wheel lock-up during sudden braking.",
+        "files": [],
+        "created_at": "2026-06-13T14:50:18.292938",
+        "last_updated": "2026-06-14T15:43:45.548669"
+      },
+      {
+        "node_id": "node_LN3-KBA",
+        "node_name": "PETG Upgrade",
+        "date": "2026-06-12",
+        "description": "The design revision switched to PETG material, which offers improved strength, flexibility, and resistance to warping and cracking compared to the previous material.",
+        "files": [],
+        "created_at": "2026-06-13T14:50:43.708815",
+        "last_updated": "2026-06-14T15:42:42.951995"
+      }
+    ]
   }
 ]

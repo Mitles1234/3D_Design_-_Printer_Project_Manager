@@ -161,6 +161,102 @@ async function generateWithAI() {
     }
 }
 
+// --- Date picker ---
+function openDatePicker(anchor, currentDateStr, onPick) {
+    document.getElementById('_dp')?.remove();
+
+    const parsed = currentDateStr ? new Date(currentDateStr + 'T00:00:00') : new Date();
+    let viewYear = parsed.getFullYear();
+    let viewMonth = parsed.getMonth();
+
+    const dp = document.createElement('div');
+    dp.id = '_dp';
+    dp.className = 'dp-popover';
+
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    function build() {
+        dp.innerHTML = '';
+
+        const hdr = document.createElement('div');
+        hdr.className = 'dp-hdr';
+
+        const prev = document.createElement('button');
+        prev.className = 'dp-nav';
+        prev.innerHTML = '<i class="ti ti-chevron-left"></i>';
+        prev.addEventListener('click', e => { e.stopPropagation(); viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } build(); });
+
+        const title = document.createElement('span');
+        title.className = 'dp-title';
+        title.textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+
+        const next = document.createElement('button');
+        next.className = 'dp-nav';
+        next.innerHTML = '<i class="ti ti-chevron-right"></i>';
+        next.addEventListener('click', e => { e.stopPropagation(); viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } build(); });
+
+        hdr.append(prev, title, next);
+        dp.appendChild(hdr);
+
+        const dayRow = document.createElement('div');
+        dayRow.className = 'dp-day-labels';
+        ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d => {
+            const s = document.createElement('span');
+            s.textContent = d;
+            dayRow.appendChild(s);
+        });
+        dp.appendChild(dayRow);
+
+        const grid = document.createElement('div');
+        grid.className = 'dp-grid';
+
+        const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+        const offset = firstDay === 0 ? 6 : firstDay - 1;
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+        for (let i = 0; i < offset; i++) {
+            grid.appendChild(document.createElement('span'));
+        }
+
+        const today = new Date();
+        const sel = currentDateStr ? new Date(currentDateStr + 'T00:00:00') : null;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const btn = document.createElement('button');
+            btn.className = 'dp-day';
+            btn.textContent = d;
+            const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === d;
+            const isSel   = sel && sel.getFullYear() === viewYear && sel.getMonth() === viewMonth && sel.getDate() === d;
+            if (isToday) btn.classList.add('dp-today');
+            if (isSel)   btn.classList.add('dp-sel');
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                onPick(iso);
+                dp.remove();
+            });
+            grid.appendChild(btn);
+        }
+        dp.appendChild(grid);
+
+        // Position
+        const r = anchor.getBoundingClientRect();
+        dp.style.top  = `${r.bottom + 6}px`;
+        dp.style.left = `${Math.min(r.left, window.innerWidth - 230)}px`;
+    }
+
+    build();
+    document.body.appendChild(dp);
+
+    const close = e => {
+        if (!dp.contains(e.target) && e.target !== anchor) {
+            dp.remove();
+            document.removeEventListener('mousedown', close);
+        }
+    };
+    setTimeout(() => document.addEventListener('mousedown', close), 0);
+}
+
 // --- Sidebar ---
 async function selectNode(projectId, nodeId) {
     if (selPid === projectId && selNid === nodeId) {
@@ -185,7 +281,7 @@ function renderSidebar() {
     if (!sb) return;
 
     if (!selPid || !selNid) {
-        sb.innerHTML = `<div class="sb-empty"><i class="ti ti-cursor-text" style="font-size:26px"></i><span>Click any revision<br>to view its details</span></div>`;
+        sb.innerHTML = `<div class="sb-empty"><i class="ti ti-hand-click" style="font-size:26px"></i><span>Click any revision<br>to view its details</span></div>`;
         return;
     }
 
@@ -193,7 +289,7 @@ function renderSidebar() {
     const node = proj?.nodes?.find(n => n.node_id === selNid);
     if (!proj || !node) { selPid = null; selNid = null; renderSidebar(); return; }
 
-    const wrap = document.createElement('div');
+    const wrap = document.createElement('div'); 
     wrap.className = 'sb-wrap';
     wrap.style.setProperty('--sb-ac', proj.accent_colour);
 
@@ -203,9 +299,26 @@ function renderSidebar() {
     hdr.innerHTML = `
         <div class="sb-name">${node.node_name}</div>
         <div class="sb-proj-label">${proj.project_name}</div>
-        <div class="sb-date-row">
-          <div class="sb-date-pill"><i class="ti ti-calendar" style="font-size:10px"></i> ${fmtDate(node.date)}</div>
-        </div>`;
+        <div class="sb-date-row"></div>`;
+
+    const dateBtn = document.createElement('button');
+    dateBtn.className = 'sb-date-pill';
+    dateBtn.innerHTML = `<i class="ti ti-calendar" style="font-size:10px"></i> ${fmtDate(node.date)}`;
+    dateBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        openDatePicker(dateBtn, node.date, async iso => {
+            const api = getApi();
+            if (api) {
+                try { await api.UPDATE_NODE(selPid, selNid, { date: iso }); }
+                catch (err) { console.error('UPDATE_NODE date failed:', err); return; }
+            }
+            node.date = iso;
+            const proj = PROJECTS.find(p => p.project_id === selPid);
+            if (proj) proj.nodes.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            renderProjectGrid();
+        });
+    });
+    hdr.querySelector('.sb-date-row').appendChild(dateBtn);
     wrap.appendChild(hdr);
 
     // Tabs
@@ -428,8 +541,17 @@ function buildProjectCard(proj) {
     return card;
 }
 
-function updateStats() {
-    document.getElementById('stat-projects').textContent = PROJECTS.length;
+async function updateStats() {
+    const api = getApi();
+    if (!api) return;
+    try {
+        const stats = await api.GET_PROJECT_STATS();
+        document.getElementById('stat-projects').textContent = stats.projects ?? 0;
+        document.getElementById('stat-itterations').textContent = stats.iterations ?? 0;
+        document.getElementById('stat-files').textContent = stats.files ?? 0;
+    } catch (e) {
+        console.error('GET_PROJECT_STATS failed:', e);
+    }
 }
 
 async function deleteProject(projectId) {

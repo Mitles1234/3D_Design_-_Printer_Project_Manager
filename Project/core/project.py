@@ -9,12 +9,27 @@ from .general import *
 def _now_iso():
     return datetime.now().isoformat()
 
-def _get_json():
-    return "Project/core/data/projects.json"
-
-
 def _projects_path():
     return Path(__file__).resolve().parent / "data" / "projects.json"
+
+
+def _extract_node_description(project_id: str, node_id: str) -> str:
+    notes_path = _node_dir(project_id, node_id) / "notes.md"
+    if not notes_path.exists():
+        return ""
+    lines = notes_path.read_text(encoding="utf-8").splitlines()
+    in_section = False
+    for line in lines:
+        if line.startswith("## "):
+            in_section = True
+            continue
+        if in_section:
+            if line.startswith("#"):
+                break
+            stripped = line.strip()
+            if stripped:
+                return stripped
+    return ""
 
 
 def _load_projects():
@@ -24,6 +39,14 @@ def _load_projects():
             data = json.load(handle)
     except (FileNotFoundError, json.JSONDecodeError):
         data = []
+    for project in data:
+        nodes = project.get("nodes", [])
+        for node in nodes:
+            node["description"] = _extract_node_description(
+                project["project_id"], node["node_id"]
+            )
+        nodes.sort(key=lambda n: n.get("date") or "")
+        project["nodes"] = nodes
     return data
 
 
@@ -145,7 +168,6 @@ def create_node(project_id, name, description=""):
                 "node_id": _new_id("node", 3, 3, 3),
                 "node_name": name,
                 "date": now.split("T")[0],
-                "description": description,
                 "files": [],
                 "created_at": now,
                 "last_updated": now,
@@ -320,6 +342,16 @@ def list_files(project_id, node_id):
     if not node:
         return []
     return node.get("files", [])
+
+def get_stats() -> dict:
+    projects = _load_projects()
+    total_nodes = sum(len(p.get("nodes", [])) for p in projects)
+    total_files = sum(
+        len(n.get("files", []))
+        for p in projects
+        for n in p.get("nodes", [])
+    )
+    return {"projects": len(projects), "iterations": total_nodes, "files": total_files}
 
 def get_node_notes(project_id: str, node_id: str) -> str:
     notes_path = _node_dir(project_id, node_id) / "notes.md"

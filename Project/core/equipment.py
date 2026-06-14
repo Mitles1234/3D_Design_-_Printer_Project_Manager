@@ -275,6 +275,18 @@ def safe_list_filaments():
     return _fallback_list_filaments()
 
 
+def get_stats() -> dict:
+    printers = safe_list_printers()
+    filaments = safe_list_filaments()
+    attached_ids = {fid for p in printers for fid in (p.get("filament_ids") or [])}
+    attached = len(attached_ids)
+    return {
+        "printers": len(printers),
+        "spools": len(filaments),
+        "attached": attached,
+        "available": len(filaments) - attached,
+    }
+
 def add_printer(name, IP_address=None, frontend_port=None, backend_port=7125, model=None):
     printers_path = Path(__file__).resolve().parent / "data" / "printers.json"
     data = _load_list(printers_path)

@@ -62,6 +62,12 @@ class API:
     def VALIDATE_CONNECTION(self, project_id):
         return project.validate_connection(project_id)
 
+    def GET_PROJECT_STATS(self):
+        return project.get_stats()
+
+    def GET_EQUIPMENT_STATS(self):
+        return equipment.get_stats()
+
     def GET_NODE_NOTES(self, project_id, node_id):
         return project.get_node_notes(project_id, node_id)
 
