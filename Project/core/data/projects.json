@@ -6,26 +6,77 @@
     "accent_colour": "#ef4444",
     "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-14T15:46:27.151260",
-    "connections": [],
-    "nodes": [
+    "last_updated": "2026-06-18T20:23:34.236539",
+    "connections": [
       {
-        "node_id": "node_XVX-KRF",
-        "node_name": "ABS Revamp",
-        "date": "2026-06-11",
-        "description": "The ABS Upgrade includes the addition of a more sophisticated braking control system with improved sensor technology and enhanced hydraulic pressure management, resulting in better stopping power and reduced wheel lock-up during sudden braking.",
-        "files": [],
-        "created_at": "2026-06-13T14:50:18.292938",
-        "last_updated": "2026-06-14T15:43:45.548669"
+        "from": "node_LN3-KBA",
+        "to": "node_O33-HUL"
       },
+      {
+        "from": "node_7GD-XF5",
+        "to": "node_ZIB-8FA"
+      }
+    ],
+    "nodes": [
       {
         "node_id": "node_LN3-KBA",
         "node_name": "PETG Upgrade",
         "date": "2026-06-12",
-        "description": "The design revision switched to PETG material, which offers improved strength, flexibility, and resistance to warping and cracking compared to the previous material.",
         "files": [],
         "created_at": "2026-06-13T14:50:43.708815",
         "last_updated": "2026-06-14T15:42:42.951995"
+      },
+      {
+        "node_id": "node_O33-HUL",
+        "node_name": "TPU Transition",
+        "date": "2026-06-14",
+        "files": [],
+        "created_at": "2026-06-14T18:54:41.398748",
+        "last_updated": "2026-06-14T18:54:41.398748"
+      },
+      {
+        "node_id": "node_7GD-XF5",
+        "node_name": "Bucket Attachment Upgrade",
+        "date": "2026-06-14",
+        "files": [],
+        "created_at": "2026-06-14T22:29:19.384565",
+        "last_updated": "2026-06-14T22:29:19.384565"
+      },
+      {
+        "node_id": "node_ZIB-8FA",
+        "node_name": "Refined Circle Handle",
+        "date": "2026-06-15",
+        "files": [],
+        "created_at": "2026-06-15T14:20:00.330517",
+        "last_updated": "2026-06-15T14:20:00.330517"
+      },
+      {
+        "node_id": "node_9P7-RQW",
+        "node_name": "PLA Upgrade",
+        "date": "2026-09-17",
+        "files": [],
+        "created_at": "2026-06-14T17:35:14.459983",
+        "last_updated": "2026-06-14T22:15:56.155532"
+      }
+    ]
+  },
+  {
+    "project_id": "proj_H83R-UR-1CZ5",
+    "project_name": "Accessory Vault",
+    "description": "A sleek, customizable 3D-printed bag designed to securely organize and protect all of my MacBook Neo accessories, including cables, chargers, and a carrying case.",
+    "accent_colour": "#3b82f6",
+    "collapsed": false,
+    "created_at": "2026-06-14T21:25:04.394801",
+    "last_updated": "2026-06-15T13:16:37.094350",
+    "connections": [],
+    "nodes": [
+      {
+        "node_id": "node_JGQ-AZ8",
+        "node_name": "Macbook Neo Bag",
+        "date": "2026-06-14",
+        "files": [],
+        "created_at": "2026-06-14T21:25:21.021876",
+        "last_updated": "2026-06-14T21:26:13.411100"
       }
     ]
   }
