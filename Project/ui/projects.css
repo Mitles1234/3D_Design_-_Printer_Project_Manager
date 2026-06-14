@@ -266,11 +266,9 @@
 
 .proj-body {
   overflow: hidden;
-  max-height: 800px;
+  max-height: 4000px;
   transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-.proj-card.collapsed .proj-body { max-height: 0; }
 
 .proj-canvas-wrap {
   border-top: 1px solid var(--border);
@@ -279,9 +277,13 @@
   background-size: 24px 24px;
   background-position: 12px 12px;
   min-height: 120px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto;
+}
+
+.proj-canvas-inner {
   position: relative;
+  min-width: 400px;
+  min-height: 120px;
 }
 
 .proj-canvas-empty {
@@ -299,28 +301,127 @@
   letter-spacing: 0.04em;
 }
 
-.proj-nodes-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px;
-}
-
 .node-card {
+  box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--border);
   border-top: 3px solid var(--proj-ac, var(--accent));
   border-radius: 9px;
   padding: 9px 11px 8px;
   width: 160px;
-  flex-shrink: 0;
   cursor: pointer;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  position: absolute;
+  overflow: visible;
+  transition: left 0.32s cubic-bezier(0.4,0,0.2,1), top 0.32s cubic-bezier(0.4,0,0.2,1), border-color 0.12s, box-shadow 0.12s;
 }
 
 .node-card:hover {
   border-color: var(--border-light);
   box-shadow: 0 2px 8px rgba(0, 149, 187, 0.08);
+}
+
+/* Output grab handle (right side) */
+.node-conn-handle {
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--proj-ac, var(--accent));
+  border: 2.5px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--proj-ac, var(--accent));
+  opacity: 0;
+  cursor: crosshair;
+  transition: opacity 0.15s, transform 0.12s;
+  z-index: 10;
+  pointer-events: all;
+}
+
+.node-card:hover .node-conn-handle { opacity: 1; }
+.node-conn-handle:hover { transform: translateY(-50%) scale(1.25); }
+
+/* Input socket (left side) — shown only during connection drag */
+.node-conn-input {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2.5px solid var(--proj-ac, var(--accent));
+  opacity: 0;
+  cursor: crosshair;
+  transition: opacity 0.15s, transform 0.12s, background 0.12s;
+  z-index: 10;
+  pointer-events: none;
+}
+
+body.conn-dragging .node-conn-input { opacity: 1; pointer-events: all; }
+body.conn-dragging .node-conn-input:hover {
+  background: var(--proj-ac, var(--accent));
+  transform: translateY(-50%) scale(1.25);
+}
+
+/* Connection SVG overlay (behind nodes via DOM order) */
+.proj-conn-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.conn-path {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  pointer-events: none;
+  opacity: 0.65;
+  transition: opacity 0.12s, stroke-width 0.12s;
+}
+
+.conn-preview {
+  stroke-dasharray: 5 4;
+  opacity: 0.55;
+  pointer-events: none !important;
+}
+
+/* HTML delete button at connection midpoint */
+.conn-del-html {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: background 0.12s, color 0.12s, opacity 0.15s;
+}
+
+.conn-del-html:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* Cursor end-dot while dragging */
+.conn-end-dot {
+  pointer-events: none;
 }
 
 .node-card-name {

@@ -53,8 +53,14 @@ def _load_projects():
 def _write_projects(projects):
     path = _projects_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Strip runtime-injected `description` from nodes — it lives in notes.md, not JSON
+    clean = []
+    for proj in projects:
+        p = {k: v for k, v in proj.items() if k != "nodes"}
+        p["nodes"] = [{k: v for k, v in n.items() if k != "description"} for n in proj.get("nodes", [])]
+        clean.append(p)
     with path.open("w", encoding="utf-8") as handle:
-        json.dump(projects, handle, indent=2)
+        json.dump(clean, handle, indent=2)
 
 
 def _new_id(prefix, *groups):
@@ -176,6 +182,7 @@ def create_node(project_id, name, description=""):
             project["last_updated"] = now
             _write_projects(projects)
             _init_node_folder(project_id, node["node_id"], name, description)
+            node["description"] = _extract_node_description(project_id, node["node_id"])
             return node
     return None
 
