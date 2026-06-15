@@ -6,15 +6,23 @@
     "accent_colour": "#ef4444",
     "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-14T22:15:56.155532",
+    "last_updated": "2026-06-15T14:20:04.704835",
     "connections": [
       {
         "from": "node_LN3-KBA",
         "to": "node_9P7-RQW"
       },
       {
+        "from": "node_9P7-RQW",
+        "to": "node_7GD-XF5"
+      },
+      {
         "from": "node_LN3-KBA",
         "to": "node_O33-HUL"
+      },
+      {
+        "from": "node_7GD-XF5",
+        "to": "node_ZIB-8FA"
       }
     ],
     "nodes": [
@@ -35,6 +43,22 @@
         "last_updated": "2026-06-14T18:54:41.398748"
       },
       {
+        "node_id": "node_7GD-XF5",
+        "node_name": "Bucket Attachment Upgrade",
+        "date": "2026-06-14",
+        "files": [],
+        "created_at": "2026-06-14T22:29:19.384565",
+        "last_updated": "2026-06-14T22:29:19.384565"
+      },
+      {
+        "node_id": "node_ZIB-8FA",
+        "node_name": "Refined Circle Handle",
+        "date": "2026-06-15",
+        "files": [],
+        "created_at": "2026-06-15T14:20:00.330517",
+        "last_updated": "2026-06-15T14:20:00.330517"
+      },
+      {
         "node_id": "node_9P7-RQW",
         "node_name": "PLA Upgrade",
         "date": "2026-09-17",
@@ -49,9 +73,9 @@
     "project_name": "Accessory Vault",
     "description": "A sleek, customizable 3D-printed bag designed to securely organize and protect all of my MacBook Neo accessories, including cables, chargers, and a carrying case.",
     "accent_colour": "#3b82f6",
-    "collapsed": true,
+    "collapsed": false,
     "created_at": "2026-06-14T21:25:04.394801",
-    "last_updated": "2026-06-14T22:16:02.278524",
+    "last_updated": "2026-06-15T13:16:37.094350",
     "connections": [],
     "nodes": [
       {
