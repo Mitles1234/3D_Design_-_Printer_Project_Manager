@@ -1,6 +1,7 @@
 import json
 import os
-from datetime import datetime
+import re
+from datetime import datetime, date as date_type
 from pathlib import Path
 from .general import *
 #from .ai import run_ai
@@ -11,6 +12,46 @@ def _now_iso():
 
 def _projects_path():
     return Path(__file__).resolve().parent / "data" / "projects.json"
+
+
+def _parse_md_fields(content: str) -> dict:
+    title = ''
+    description = ''
+    date = ''
+
+    title_match = re.search(r'^# (.+)', content, re.MULTILINE)
+    if title_match:
+        title = title_match.group(1).strip()
+
+    date_match = re.search(r'^\*\*Date:\*\*\s*(\d{4}-\d{2}-\d{2})\s*$', content, re.MULTILINE)
+    if date_match:
+        date = date_match.group(1)
+
+    in_section = False
+    for line in content.splitlines():
+        if line.startswith('## '):
+            in_section = True
+            continue
+        if in_section:
+            if line.startswith('#'):
+                break
+            stripped = line.strip()
+            if stripped:
+                description = stripped
+                break
+
+    return {'title': title, 'description': description, 'date': date}
+
+
+def _validate_date(iso: str) -> bool:
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', iso):
+        return False
+    try:
+        y, m, d = iso.split('-')
+        date_type(int(y), int(m), int(d))
+        return True
+    except ValueError:
+        return False
 
 
 def _extract_node_description(project_id: str, node_id: str) -> str:
@@ -53,8 +94,14 @@ def _load_projects():
 def _write_projects(projects):
     path = _projects_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Strip runtime-injected `description` from nodes — it lives in notes.md, not JSON
+    clean = []
+    for proj in projects:
+        p = {k: v for k, v in proj.items() if k != "nodes"}
+        p["nodes"] = [{k: v for k, v in n.items() if k != "description"} for n in proj.get("nodes", [])]
+        clean.append(p)
     with path.open("w", encoding="utf-8") as handle:
-        json.dump(projects, handle, indent=2)
+        json.dump(clean, handle, indent=2)
 
 
 def _new_id(prefix, *groups):
@@ -176,6 +223,7 @@ def create_node(project_id, name, description=""):
             project["last_updated"] = now
             _write_projects(projects)
             _init_node_folder(project_id, node["node_id"], name, description)
+            node["description"] = _extract_node_description(project_id, node["node_id"])
             return node
     return None
 
@@ -359,11 +407,26 @@ def get_node_notes(project_id: str, node_id: str) -> str:
         return notes_path.read_text(encoding="utf-8")
     return ""
 
-def set_node_notes(project_id: str, node_id: str, content: str) -> bool:
+def set_node_notes(project_id: str, node_id: str, content: str):
+    # Validate the date line before writing anything
+    fields = _parse_md_fields(content)
+    if fields['date'] and not _validate_date(fields['date']):
+        return None  # Signals to JS that the date value is invalid
+
     folder = _node_dir(project_id, node_id)
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "notes.md").write_text(content, encoding="utf-8")
-    return True
+
+    # Sync node_name and date from the parsed markdown fields
+    updates = {}
+    if fields['title']:
+        updates['node_name'] = fields['title']
+    if fields['date']:
+        updates['date'] = fields['date']
+    if updates:
+        update_node(project_id, node_id, updates)
+
+    return get_node(project_id, node_id)
 
 def get_file(project_id, node_id, filename):
     # Gets a file from a node
