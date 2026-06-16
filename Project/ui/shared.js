@@ -1,3 +1,12 @@
+function showToast(message, isError = false) {
+    const toast = document.getElementById('app-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.toggle('error', isError);
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
 const COLOURS = [
   { hex: '#ef4444', name: 'Red' },
   { hex: '#f97316', name: 'Orange' },
