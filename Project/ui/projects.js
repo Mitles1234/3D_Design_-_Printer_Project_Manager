@@ -7,13 +7,20 @@ let activeProjectId = null;
 let selectedAccentColour = COLOURS[0].hex;
 
 // --- Sidebar state ---
-let selPid = null, selNid = null, selSbTab = 'notes', sbMdEdit = false, sbNotes = '';
+let selPid = null;
+let selNid = null;
+let selSbTab = 'notes';
+let sbMdEdit = false;
+let sbNotes = '';
 
 // --- Connection drag state ---
 let connDrag = null;
 
+// Stores the hover-listeners for each canvas so they can be removed before re-rendering
+const connHoverListeners = new WeakMap();
+
 // --- Build colour popover swatches (runs once on load) ---
-(function buildColourPopover() {
+function buildColourPopover() {
     const popover = document.getElementById('p-colour-popover');
     COLOURS.forEach(({ hex, name }) => {
         const btn = document.createElement('button');
@@ -25,7 +32,8 @@ let connDrag = null;
         btn.addEventListener('click', () => pickColour(hex));
         popover.appendChild(btn);
     });
-})();
+}
+buildColourPopover();
 
 // --- Colour Picker ---
 function toggleColourPicker() {
@@ -51,20 +59,6 @@ document.addEventListener('mousedown', e => {
     if (wrap && !wrap.contains(e.target)) closeColourPicker();
 });
 
-// Project AI textarea → ready state
-document.getElementById('ai-user-prompt').addEventListener('input', function () {
-    const hasText = this.value.trim().length > 0;
-    document.getElementById('ai-generate-btn').classList.toggle('ready', hasText);
-    document.getElementById('ai-btn-wrap').classList.toggle('ready', hasText);
-});
-
-// Revision AI textarea → ready state
-document.getElementById('r-ai-prompt').addEventListener('input', function () {
-    const hasText = this.value.trim().length > 0;
-    document.getElementById('r-ai-generate-btn').classList.toggle('ready', hasText);
-    document.getElementById('r-ai-btn-wrap').classList.toggle('ready', hasText);
-});
-
 // Clear name error state as soon as the user starts typing
 document.getElementById('p-name').addEventListener('input', function () {
     this.classList.remove('input-error');
@@ -74,37 +68,18 @@ document.getElementById('r-name').addEventListener('input', function () {
 });
 
 // --- Helpers ---
-function extractMdTitle(raw) {
-    for (const line of (raw || '').split('\n')) {
-        const m = line.match(/^# (.+)/);
-        if (m) return m[1].trim();
-    }
-    return '';
-}
-
-function extractMdDescription(raw) {
-    const lines = (raw || '').split('\n');
-    let inSection = false;
-    for (const line of lines) {
-        if (/^## /.test(line)) { inSection = true; continue; }
-        if (inSection) {
-            if (/^#/.test(line)) break;
-            const s = line.trim();
-            if (s) return s;
-        }
-    }
-    return '';
-}
 
 function fmtDate(iso) {
     if (!iso) return 'No date';
-    const parts = iso.split('-');
-    if (parts.length < 3) return iso;
+    const [y, m, d] = iso.split('-');
+    if (!y || !m || !d) return iso;
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+    return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
 }
 
 function renderMd(raw) {
+    if (!raw) return '';
+    raw = raw.replace(/^\*\*Date:\*\*.*$/m, '').replace(/\n{3,}/g, '\n\n').trim();
     if (!raw) return '';
     return raw
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -120,180 +95,95 @@ function renderMd(raw) {
         .replace(/^(?!<[hul\d]|<hr)(.+)$/gm, '<p>$1</p>');
 }
 
-// --- API handle (mirrors equipment.js pattern) ---
+// --- API handle ---
+// pywebview sets window.pywebview.api once the Python bridge is ready.
+// The try/catch is only needed for the parent-frame check — accessing window.parent
+// throws a security error if the page is ever loaded cross-origin.
 function getApi() {
+    if (window.pywebview?.api) return window.pywebview.api;
     try {
-        if (window.pywebview?.api) return window.pywebview.api;
-    } catch (_) {}
-    try {
-        if (window.parent && window.parent !== window && window.parent.pywebview?.api)
-            return window.parent.pywebview.api;
+        if (window.parent !== window) return window.parent.pywebview?.api ?? null;
     } catch (_) {}
     return null;
 }
 
-// --- Toast ---
-function showToast(message) {
-    const toast = document.getElementById('ai-toast');
-    toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3500);
-}
-
 // --- AI Generation ---
-async function generateWithAI() {
-    const prompt = document.getElementById('ai-user-prompt').value.trim();
-    if (!prompt) {
-        document.getElementById('ai-user-prompt').focus();
-        return;
-    }
+async function generateAI({ promptId, btnId, apiMethod, nameId, descId }) {
+    const prompt = document.getElementById(promptId).value.trim();
+    if (!prompt) { document.getElementById(promptId).focus(); return; }
 
-    const btn = document.getElementById('ai-generate-btn');
-    const wrap = document.getElementById('ai-btn-wrap');
-
+    const btn = document.getElementById(btnId);
     const api = getApi();
-    if (!api) {
-        showToast('ERROR: API NOT READY');
-        return;
-    }
+    if (!api) { showToast('ERROR: API NOT READY', true); return; }
 
     btn.disabled = true;
-    btn.classList.remove('error', 'ready');
-    wrap.classList.remove('error', 'ready');
-    wrap.classList.add('generating');
-
     try {
-        const result = await api.GENERATE_PROJECT_DETAILS(prompt);
-        if (result.name) document.getElementById('p-name').value = result.name;
-        if (result.description) document.getElementById('p-description').value = result.description;
+        const result = await api[apiMethod](prompt);
+        if (result.name)        document.getElementById(nameId).value = result.name;
+        if (result.description) document.getElementById(descId).value = result.description;
     } catch (err) {
-        const msg = err?.message || err?.toString() || 'Unknown error';
-        console.error('AI generation failed:', msg);
-        btn.classList.add('error');
-        wrap.classList.add('error');
-        showToast('AI failed: ' + msg.slice(0, 60));
-        setTimeout(() => {
-            btn.classList.remove('error');
-            wrap.classList.remove('error');
-        }, 3500);
+        showToast('AI failed: ' + (err?.message || 'Unknown error').slice(0, 60), true);
     } finally {
         btn.disabled = false;
-        wrap.classList.remove('generating');
-        // Restore ready state if textarea still has content
-        const hasText = document.getElementById('ai-user-prompt').value.trim().length > 0;
-        btn.classList.toggle('ready', hasText && !btn.classList.contains('error'));
-        wrap.classList.toggle('ready', hasText && !wrap.classList.contains('error'));
     }
+}
+
+function generateWithAI() {
+    return generateAI({ promptId: 'ai-user-prompt', btnId: 'ai-generate-btn', apiMethod: 'GENERATE_PROJECT_DETAILS', nameId: 'p-name', descId: 'p-description' });
 }
 
 // --- Layout constants ---
 const NW = 160, NODE_H = 78, COL_GAP = 220, ROW_GAP = 110, X0 = 36, Y0 = 28;
 
-// --- Graph-aware layout (3 phases) ---
+// --- Layout: column = number of ancestors (nodes above), date sorts within column ---
 function layoutNodes(proj) {
     const nodes = proj.nodes || [];
     if (!nodes.length) return;
     const conns = proj.connections || [];
-    const ids = nodes.map(n => n.node_id);
 
-    // Phase 1: topological rank (Kahn BFS)
     const outEdges = {}, inDeg = {};
-    ids.forEach(id => { outEdges[id] = []; inDeg[id] = 0; });
+    nodes.forEach(n => { outEdges[n.node_id] = []; inDeg[n.node_id] = 0; });
     conns.forEach(c => {
-        if (outEdges[c.from] && inDeg[c.to] !== undefined) {
+        if (outEdges[c.from] !== undefined && inDeg[c.to] !== undefined) {
             outEdges[c.from].push(c.to);
             inDeg[c.to]++;
         }
     });
-    const rank = {};
-    // Only seed the BFS with nodes that have outgoing edges — truly isolated
-    // nodes (no edges at all) get date-based ranks so they spread across columns.
-    const queue = ids.filter(id => inDeg[id] === 0 && outEdges[id].length > 0);
-    queue.forEach(id => { rank[id] = 0; });
-    let qi = 0;
-    while (qi < queue.length) {
-        const cur = queue[qi++];
+
+    // Assign each node a column = length of the longest chain leading to it.
+    // Start from root nodes (nothing points to them), then walk outward.
+    const col = {};
+    const queue = nodes.filter(n => inDeg[n.node_id] === 0).map(n => n.node_id);
+    queue.forEach(id => { col[id] = 0; });
+    while (queue.length > 0) {
+        const cur = queue.shift();
         outEdges[cur].forEach(nxt => {
-            rank[nxt] = Math.max(rank[nxt] || 0, (rank[cur] || 0) + 1);
+            col[nxt] = Math.max(col[nxt] || 0, col[cur] + 1);
             inDeg[nxt]--;
             if (inDeg[nxt] === 0) queue.push(nxt);
         });
     }
-    // Isolated / cycle nodes → sequential columns by date, after any BFS ranks
-    const maxExistingRank = Object.values(rank).length ? Math.max(...Object.values(rank)) : -1;
-    const dateSorted = [...nodes].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    dateSorted.forEach((n, i) => { if (rank[n.node_id] === undefined) rank[n.node_id] = maxExistingRank + 1 + i; });
 
-    // Phase 2: group by rank, barycenter sort within each column
+    // Isolated nodes (no edges) get columns after all connected ones, ordered by date
+    const assignedCols = Object.values(col);
+    const maxCol = assignedCols.length > 0 ? Math.max(...assignedCols) : -1;
+    [...nodes]
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .forEach((n, i) => { if (col[n.node_id] === undefined) col[n.node_id] = maxCol + 1 + i; });
+
+    // Group by column, sort within each by date
     const cols = {};
     nodes.forEach(n => {
-        const r = rank[n.node_id] || 0;
-        if (!cols[r]) cols[r] = [];
-        cols[r].push(n);
+        const c = col[n.node_id];
+        if (!cols[c]) cols[c] = [];
+        cols[c].push(n);
     });
+    Object.values(cols).forEach(c => c.sort((a, b) => (a.date || '').localeCompare(b.date || '')));
+
     const colKeys = Object.keys(cols).map(Number).sort((a, b) => a - b);
-    colKeys.forEach(ci => cols[ci].sort((a, b) => (a.date || '').localeCompare(b.date || '')));
-    for (let sweep = 0; sweep < 3; sweep++) {
-        colKeys.forEach(ci => {
-            const prev = cols[ci - 1];
-            if (!prev) return;
-            const rowOf = {};
-            prev.forEach((n, i) => { rowOf[n.node_id] = i; });
-            cols[ci].forEach(n => {
-                const preds = conns.filter(c => c.to === n.node_id)
-                    .map(c => rowOf[c.from]).filter(v => v !== undefined);
-                n._bary = preds.length ? preds.reduce((s, v) => s + v, 0) / preds.length : 999;
-            });
-            cols[ci].sort((a, b) => a._bary - b._bary);
-        });
-    }
-
-    // Initial pixel assignment
-    const rankOf = {};
-    nodes.forEach(n => { rankOf[n.node_id] = rank[n.node_id] || 0; });
-    function assign() {
-        colKeys.forEach((ci, ci_) => {
-            cols[ci].forEach((n, ri) => { n.x = X0 + ci_ * COL_GAP; n.y = Y0 + ri * ROW_GAP; });
-        });
-    }
-    assign();
-
-    // Phase 3: collision avoidance — push nodes clear of long-skip bezier edges
-    function bezXAt(p0,c1,c2,p1,t){ const u=1-t; return u*u*u*p0+3*u*u*t*c1+3*u*t*t*c2+t*t*t*p1; }
-    function bezYAt(p0,c1,c2,p1,t){ const u=1-t; return u*u*u*p0+3*u*u*t*c1+3*u*t*t*c2+t*t*t*p1; }
-    function edgeYAt(fn, tn, xTarget) {
-        const ox=fn.x+NW, oy=fn.y+NODE_H/2, ix=tn.x, iy=tn.y+NODE_H/2;
-        if (ix <= ox) return (oy+iy)/2;
-        const dx = (ix-ox)*0.55;
-        let lo=0, hi=1;
-        for (let i=0; i<16; i++) {
-            const m=(lo+hi)/2;
-            bezXAt(ox, ox+dx, ix-dx, ix, m) < xTarget ? lo=m : hi=m;
-        }
-        return bezYAt(oy, oy, iy, iy, (lo+hi)/2);
-    }
-    for (let pass=0; pass<20; pass++) {
-        let moved = false;
-        conns.forEach(c => {
-            const fn=nodes.find(n=>n.node_id===c.from), tn=nodes.find(n=>n.node_id===c.to);
-            if (!fn||!tn||Math.abs(rankOf[fn.node_id]-rankOf[tn.node_id])<=1) return;
-            const minR=Math.min(rankOf[fn.node_id],rankOf[tn.node_id]);
-            const maxR=Math.max(rankOf[fn.node_id],rankOf[tn.node_id]);
-            colKeys.forEach((ci, ci_) => {
-                if (ci<=minR||ci>=maxR) return;
-                const eY = edgeYAt(fn, tn, X0+ci_*COL_GAP+NW/2);
-                const col = cols[ci];
-                col.forEach(node => {
-                    if (node.y-10 < eY+10 && node.y+NODE_H+10 > eY-10) {
-                        const idx=col.indexOf(node);
-                        for (let k=idx; k<col.length; k++) col[k].y += ROW_GAP;
-                        moved=true;
-                    }
-                });
-            });
-        });
-        if (!moved) break;
-    }
+    colKeys.forEach((c, ci) => {
+        cols[c].forEach((n, ri) => { n.x = X0 + ci * COL_GAP; n.y = Y0 + ri * ROW_GAP; });
+    });
 }
 
 function projCanvasSize(proj) {
@@ -310,33 +200,11 @@ function outPt(n) { return { x: n.x + NW, y: n.y + NODE_H/2 }; }
 function inPt(n)  { return { x: n.x,      y: n.y + NODE_H/2 }; }
 function midPt(f, t) { const o=outPt(f),i=inPt(t); return { x:(o.x+i.x)/2, y:(o.y+i.y)/2 }; }
 
-// Smart bezier routing: goes above/below blocking nodes for long-skip edges
-function edgePath(fn, tn, allNodes) {
-    const o=outPt(fn), i=inPt(tn);
-    const colSpan = (tn.x-(fn.x+NW)) / COL_GAP;
-    if (colSpan <= 1.05) {
-        const dx=Math.abs(i.x-o.x)*0.55;
-        return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
-    }
-    const xLeft=fn.x+NW, xRight=tn.x;
-    const blocking = allNodes.filter(n => {
-        if (n.node_id===fn.node_id||n.node_id===tn.node_id) return false;
-        return (n.x+NW)>xLeft+10 && n.x<xRight-10;
-    });
-    if (!blocking.length) {
-        const dx=Math.abs(i.x-o.x)*0.55;
-        return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
-    }
-    const aboveY = Math.min(...blocking.map(n=>n.y)) - 18;
-    const belowY = Math.max(...blocking.map(n=>n.y+NODE_H)) + 18;
-    const avgY = (o.y+i.y)/2;
-    const routeY = Math.abs(avgY-aboveY) <= Math.abs(avgY-belowY) ? aboveY : belowY;
-    const hPull = Math.abs(i.x-o.x)*0.35;
-    return [
-        `M${o.x} ${o.y}`,
-        `C${o.x+hPull} ${o.y} ${o.x+hPull} ${routeY} ${(o.x+i.x)/2} ${routeY}`,
-        `C${i.x-hPull} ${routeY} ${i.x-hPull} ${i.y} ${i.x} ${i.y}`,
-    ].join(' ');
+// Simple S-curve bezier — control points pulled horizontally from each end
+function edgePath(fn, tn) {
+    const o = outPt(fn), i = inPt(tn);
+    const dx = Math.max(Math.abs(i.x - o.x) * 0.45, 60);
+    return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
 }
 
 // Re-layout and refresh a canvas in-place (after connection add/remove)
@@ -364,11 +232,14 @@ function renderConnections(proj, svg, inner) {
     inner.querySelectorAll('.conn-del-html').forEach(el => el.remove());
     while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-    if (inner._connProximity) {
-        inner.removeEventListener('mousemove', inner._connProximity);
-        inner.removeEventListener('mouseleave', inner._connLeave);
+    // Remove old hover listeners before adding new ones (connections change on re-render)
+    const existing = connHoverListeners.get(inner);
+    if (existing) {
+        inner.removeEventListener('mousemove', existing.onMove);
+        inner.removeEventListener('mouseleave', existing.onLeave);
     }
-    inner._connProximity = e => {
+
+    const onMove = e => {
         const cr = inner.getBoundingClientRect();
         const cx = e.clientX - cr.left, cy = e.clientY - cr.top;
         inner.querySelectorAll('.conn-del-html').forEach(btn => {
@@ -377,13 +248,17 @@ function renderConnections(proj, svg, inner) {
             btn.style.pointerEvents = near ? 'all' : 'none';
         });
     };
-    inner._connLeave = () => {
+
+    const onLeave = () => {
         inner.querySelectorAll('.conn-del-html').forEach(btn => {
-            btn.style.opacity = '0'; btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0';
+            btn.style.pointerEvents = 'none';
         });
     };
-    inner.addEventListener('mousemove', inner._connProximity);
-    inner.addEventListener('mouseleave', inner._connLeave);
+
+    connHoverListeners.set(inner, { onMove, onLeave });
+    inner.addEventListener('mousemove', onMove);
+    inner.addEventListener('mouseleave', onLeave);
 
     (proj.connections || []).forEach(conn => {
         const fn = proj.nodes.find(n => n.node_id === conn.from);
@@ -391,7 +266,7 @@ function renderConnections(proj, svg, inner) {
         if (!fn || !tn || fn.x === undefined) return;
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', edgePath(fn, tn, proj.nodes));
+        path.setAttribute('d', edgePath(fn, tn));
         path.classList.add('conn-path');
         path.style.stroke = proj.accent_colour;
         svg.appendChild(path);
@@ -420,6 +295,7 @@ function renderConnections(proj, svg, inner) {
 }
 
 function startConnDrag(e, proj, node, svg, inner) {
+    // stopPropagation prevents the click from also triggering the node-select handler on the parent
     e.stopPropagation();
     e.preventDefault();
 
@@ -484,101 +360,6 @@ async function onConnEnd(e) {
     } catch (err) { console.error('CREATE_CONNECTION failed:', err); }
 }
 
-// --- Date picker ---
-function openDatePicker(anchor, currentDateStr, onPick) {
-    document.getElementById('_dp')?.remove();
-
-    const parsed = currentDateStr ? new Date(currentDateStr + 'T00:00:00') : new Date();
-    let viewYear = parsed.getFullYear();
-    let viewMonth = parsed.getMonth();
-
-    const dp = document.createElement('div');
-    dp.id = '_dp';
-    dp.className = 'dp-popover';
-
-    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-    function build() {
-        dp.innerHTML = '';
-
-        const hdr = document.createElement('div');
-        hdr.className = 'dp-hdr';
-
-        const prev = document.createElement('button');
-        prev.className = 'dp-nav';
-        prev.innerHTML = '<i class="ti ti-chevron-left"></i>';
-        prev.addEventListener('click', e => { e.stopPropagation(); viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } build(); });
-
-        const title = document.createElement('span');
-        title.className = 'dp-title';
-        title.textContent = `${MONTHS[viewMonth]} ${viewYear}`;
-
-        const next = document.createElement('button');
-        next.className = 'dp-nav';
-        next.innerHTML = '<i class="ti ti-chevron-right"></i>';
-        next.addEventListener('click', e => { e.stopPropagation(); viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } build(); });
-
-        hdr.append(prev, title, next);
-        dp.appendChild(hdr);
-
-        const dayRow = document.createElement('div');
-        dayRow.className = 'dp-day-labels';
-        ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d => {
-            const s = document.createElement('span');
-            s.textContent = d;
-            dayRow.appendChild(s);
-        });
-        dp.appendChild(dayRow);
-
-        const grid = document.createElement('div');
-        grid.className = 'dp-grid';
-
-        const firstDay = new Date(viewYear, viewMonth, 1).getDay();
-        const offset = firstDay === 0 ? 6 : firstDay - 1;
-        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-        for (let i = 0; i < offset; i++) {
-            grid.appendChild(document.createElement('span'));
-        }
-
-        const today = new Date();
-        const sel = currentDateStr ? new Date(currentDateStr + 'T00:00:00') : null;
-
-        for (let d = 1; d <= daysInMonth; d++) {
-            const btn = document.createElement('button');
-            btn.className = 'dp-day';
-            btn.textContent = d;
-            const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === d;
-            const isSel   = sel && sel.getFullYear() === viewYear && sel.getMonth() === viewMonth && sel.getDate() === d;
-            if (isToday) btn.classList.add('dp-today');
-            if (isSel)   btn.classList.add('dp-sel');
-            btn.addEventListener('click', e => {
-                e.stopPropagation();
-                const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                onPick(iso);
-                dp.remove();
-            });
-            grid.appendChild(btn);
-        }
-        dp.appendChild(grid);
-
-        // Position
-        const r = anchor.getBoundingClientRect();
-        dp.style.top  = `${r.bottom + 6}px`;
-        dp.style.left = `${Math.min(r.left, window.innerWidth - 230)}px`;
-    }
-
-    build();
-    document.body.appendChild(dp);
-
-    const close = e => {
-        if (!dp.contains(e.target) && e.target !== anchor) {
-            dp.remove();
-            document.removeEventListener('mousedown', close);
-        }
-    };
-    setTimeout(() => document.addEventListener('mousedown', close), 0);
-}
 
 // --- Sidebar ---
 async function selectNode(projectId, nodeId) {
@@ -599,12 +380,88 @@ async function selectNode(projectId, nodeId) {
     renderSidebar();
 }
 
+function buildNotesPanel(panel, node) {
+    if (sbMdEdit) {
+        panel.innerHTML = `<div class="md-wrap"><textarea class="sb-ta"></textarea><button class="md-fab" title="Save notes"><i class="ti ti-check"></i></button></div>`;
+        const ta = panel.querySelector('.sb-ta');
+        ta.value = sbNotes;
+        ta.addEventListener('input', () => { sbNotes = ta.value; });
+        setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 20);
+        panel.querySelector('.md-fab').addEventListener('click', async () => {
+            const api = getApi();
+            if (!api) return;
+            // Python parses the markdown, validates the date, updates the node, and returns it.
+            // If the date line has an invalid value it returns null — show an error and stop.
+            const updated = await api.SET_NODE_NOTES(selPid, selNid, sbNotes).catch(() => null);
+            if (!updated) {
+                const fab = panel.querySelector('.md-fab');
+                fab.classList.add('error');
+                setTimeout(() => fab.classList.remove('error'), 1500);
+                return;
+            }
+            node.node_name   = updated.node_name;
+            node.description = updated.description || '';
+            node.date        = updated.date;
+            const proj = PROJECTS.find(p => p.project_id === selPid);
+            if (proj) proj.nodes.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            sbMdEdit = false;
+            renderProjectGrid();
+        });
+    } else {
+        const html = renderMd(sbNotes);
+        panel.innerHTML = `<div class="md-wrap"><div class="md-preview">${html || '<p class="md-empty">No notes yet — click edit to add some.</p>'}</div><button class="md-fab" title="Edit notes"><i class="ti ti-pencil"></i></button></div>`;
+        panel.querySelector('.md-fab').addEventListener('click', () => {
+            if (node.date && !/^\*\*Date:\*\*/m.test(sbNotes)) {
+                sbNotes = /^# .+/m.test(sbNotes)
+                    ? sbNotes.replace(/^(# .+)$/m, `$1\n**Date:** ${node.date}`)
+                    : `**Date:** ${node.date}\n\n${sbNotes}`.trimEnd();
+            }
+            sbMdEdit = true;
+            renderSidebar();
+        });
+    }
+}
+
+function buildFilesPanel(panel, node) {
+    const files = node.files || [];
+    panel.innerHTML = files.length
+        ? `<div>${files.map(f => `<span class="sb-file-chip">${f}</span>`).join('')}</div>`
+        : `<span style="font-size:12px;color:var(--text-faint);font-style:italic">No files attached yet</span>`;
+    const addBtn = document.createElement('button');
+    addBtn.className = 'sb-add';
+    addBtn.innerHTML = `<i class="ti ti-paperclip" style="font-size:12px"></i> Attach files`;
+    panel.appendChild(addBtn);
+}
+
+function buildDetailsPanel(panel, proj, node) {
+    panel.innerHTML = `
+        <div class="sb-dr"><span class="sb-dk">Project</span><span class="sb-dv">${proj.project_name}</span></div>
+        <div class="sb-dr"><span class="sb-dk">Date</span><span class="sb-dv">${fmtDate(node.date)}</span></div>
+        <div class="sb-dr"><span class="sb-dk">Description</span><span class="sb-dv">${node.description || '—'}</span></div>
+        <button class="sb-del-btn"><i class="ti ti-trash" style="font-size:12px"></i> Delete revision</button>`;
+    panel.querySelector('.sb-del-btn').addEventListener('click', async () => {
+        const api = getApi();
+        if (!api) return;
+        try {
+            await api.DELETE_NODE(selPid, selNid);
+            const p = PROJECTS.find(pr => pr.project_id === selPid);
+            if (p) {
+                p.nodes       = p.nodes.filter(n => n.node_id !== selNid);
+                p.connections = p.connections.filter(c => c.from !== selNid && c.to !== selNid);
+            }
+            selPid = null; selNid = null;
+            renderProjectGrid();
+            updateStats();
+        } catch (e) { console.error('DELETE_NODE failed:', e); }
+    });
+}
+
 function renderSidebar() {
     const sb = document.getElementById('proj-sidebar');
     if (!sb) return;
 
     if (!selPid || !selNid) {
-        sb.innerHTML = `<div class="sb-empty"><i class="ti ti-hand-click" style="font-size:26px"></i><span>Click any revision<br>to view its details</span></div>`;
+        sb.innerHTML = `<div class="sb-empty"><i class="ti ti-hand-click" style="font-size:26px"></i><span>Click any Revision<br>to View its Details</span></div>`;
         return;
     }
 
@@ -612,163 +469,29 @@ function renderSidebar() {
     const node = proj?.nodes?.find(n => n.node_id === selNid);
     if (!proj || !node) { selPid = null; selNid = null; renderSidebar(); return; }
 
-    const wrap = document.createElement('div'); 
-    wrap.className = 'sb-wrap';
-    wrap.style.setProperty('--sb-ac', proj.accent_colour);
+    const tabsHtml = ['notes', 'files', 'details'].map(t =>
+        `<button class="sb-tab${selSbTab === t ? ' on' : ''}" data-tab="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`
+    ).join('');
 
-    // Header
-    const hdr = document.createElement('div');
-    hdr.className = 'sb-hdr';
-    hdr.innerHTML = `
-        <div class="sb-name">${node.node_name}</div>
-        <div class="sb-proj-label">${proj.project_name}</div>
-        <div class="sb-date-row"></div>`;
+    sb.innerHTML = `
+        <div class="sb-wrap" style="--sb-ac:${proj.accent_colour}">
+            <div class="sb-hdr">
+                <div class="sb-name">${node.node_name}</div>
+                <div class="sb-proj-label">${proj.project_name}</div>
+                <div class="sb-date-row"><span class="sb-date-pill"><i class="ti ti-calendar" style="font-size:10px"></i> ${fmtDate(node.date)}</span></div>
+            </div>
+            <div class="sb-tabs">${tabsHtml}</div>
+            <div class="sb-panel"></div>
+        </div>`;
 
-    const dateBtn = document.createElement('button');
-    dateBtn.className = 'sb-date-pill';
-    dateBtn.innerHTML = `<i class="ti ti-calendar" style="font-size:10px"></i> ${fmtDate(node.date)}`;
-    dateBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        openDatePicker(dateBtn, node.date, async iso => {
-            const api = getApi();
-            if (api) {
-                try { await api.UPDATE_NODE(selPid, selNid, { date: iso }); }
-                catch (err) { console.error('UPDATE_NODE date failed:', err); return; }
-            }
-            node.date = iso;
-            const proj = PROJECTS.find(p => p.project_id === selPid);
-            if (proj) proj.nodes.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-            renderProjectGrid();
-        });
-    });
-    hdr.querySelector('.sb-date-row').appendChild(dateBtn);
-    wrap.appendChild(hdr);
+    sb.querySelectorAll('.sb-tab').forEach(btn =>
+        btn.addEventListener('click', () => { selSbTab = btn.dataset.tab; sbMdEdit = false; renderSidebar(); })
+    );
 
-    // Tabs
-    const tabs = document.createElement('div');
-    tabs.className = 'sb-tabs';
-    ['notes', 'files', 'details'].forEach(t => {
-        const btn = document.createElement('button');
-        btn.className = 'sb-tab' + (selSbTab === t ? ' on' : '');
-        btn.textContent = t.charAt(0).toUpperCase() + t.slice(1);
-        btn.addEventListener('click', () => { selSbTab = t; sbMdEdit = false; renderSidebar(); });
-        tabs.appendChild(btn);
-    });
-    wrap.appendChild(tabs);
-
-    // Panel
-    const panel = document.createElement('div');
-    panel.className = 'sb-panel';
-
-    if (selSbTab === 'notes') {
-        const mdWrap = document.createElement('div');
-        mdWrap.className = 'md-wrap';
-
-        if (sbMdEdit) {
-            const ta = document.createElement('textarea');
-            ta.className = 'sb-ta';
-            ta.value = sbNotes;
-            ta.addEventListener('input', () => { sbNotes = ta.value; });
-            mdWrap.appendChild(ta);
-            setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 20);
-
-            const fab = document.createElement('button');
-            fab.className = 'md-fab';
-            fab.title = 'Save notes';
-            fab.innerHTML = `<i class="ti ti-check"></i>`;
-            fab.addEventListener('click', async () => {
-                const api = getApi();
-                if (api) await api.SET_NODE_NOTES(selPid, selNid, sbNotes).catch(() => {});
-
-                // Sync title and description from the saved markdown
-                const newTitle = extractMdTitle(sbNotes);
-                const newDesc  = extractMdDescription(sbNotes);
-                if (newTitle && newTitle !== node.node_name) {
-                    node.node_name = newTitle;
-                    if (api) await api.UPDATE_NODE(selPid, selNid, { node_name: newTitle }).catch(() => {});
-                }
-                node.description = newDesc;
-
-                sbMdEdit = false;
-                renderProjectGrid(); // re-renders card + sidebar title
-            });
-            mdWrap.appendChild(fab);
-        } else {
-            const preview = document.createElement('div');
-            preview.className = 'md-preview';
-            const html = renderMd(sbNotes);
-            preview.innerHTML = html || '<p class="md-empty">No notes yet — click edit to add some.</p>';
-            mdWrap.appendChild(preview);
-
-            const fab = document.createElement('button');
-            fab.className = 'md-fab';
-            fab.title = 'Edit notes';
-            fab.innerHTML = `<i class="ti ti-pencil"></i>`;
-            fab.addEventListener('click', () => { sbMdEdit = true; renderSidebar(); });
-            mdWrap.appendChild(fab);
-        }
-        panel.appendChild(mdWrap);
-
-    } else if (selSbTab === 'files') {
-        const files = node.files || [];
-        if (files.length) {
-            const chipsWrap = document.createElement('div');
-            files.forEach(f => {
-                const chip = document.createElement('span');
-                chip.className = 'sb-file-chip';
-                chip.textContent = f;
-                chipsWrap.appendChild(chip);
-            });
-            panel.appendChild(chipsWrap);
-        } else {
-            const empty = document.createElement('span');
-            empty.style.cssText = 'font-size:12px;color:var(--text-faint);font-style:italic';
-            empty.textContent = 'No files attached yet';
-            panel.appendChild(empty);
-        }
-        const addBtn = document.createElement('button');
-        addBtn.className = 'sb-add';
-        addBtn.innerHTML = `<i class="ti ti-paperclip" style="font-size:12px"></i> Attach files`;
-        panel.appendChild(addBtn);
-
-    } else {
-        // Details tab
-        const rows = [
-            ['Project', proj.project_name],
-            ['Date', fmtDate(node.date)],
-            ['Description', node.description || '—'],
-        ];
-        rows.forEach(([k, v]) => {
-            const row = document.createElement('div');
-            row.className = 'sb-dr';
-            row.innerHTML = `<span class="sb-dk">${k}</span><span class="sb-dv">${v}</span>`;
-            panel.appendChild(row);
-        });
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'sb-del-btn';
-        delBtn.innerHTML = `<i class="ti ti-trash" style="font-size:12px"></i> Delete revision`;
-        delBtn.addEventListener('click', async () => {
-            const api = getApi();
-            if (!api) return;
-            try {
-                await api.DELETE_NODE(selPid, selNid);
-                const p = PROJECTS.find(pr => pr.project_id === selPid);
-                if (p) {
-                    p.nodes = (p.nodes || []).filter(n => n.node_id !== selNid);
-                    p.connections = (p.connections || []).filter(c => c.from !== selNid && c.to !== selNid);
-                }
-                selPid = null; selNid = null;
-                renderProjectGrid();
-                updateStats();
-            } catch (e) { console.error('DELETE_NODE failed:', e); }
-        });
-        panel.appendChild(delBtn);
-    }
-
-    wrap.appendChild(panel);
-    sb.innerHTML = '';
-    sb.appendChild(wrap);
+    const panel = sb.querySelector('.sb-panel');
+    if (selSbTab === 'notes')        buildNotesPanel(panel, node);
+    else if (selSbTab === 'files')   buildFilesPanel(panel, node);
+    else                             buildDetailsPanel(panel, proj, node);
 }
 
 // --- Project grid ---
@@ -779,58 +502,57 @@ function renderProjectGrid() {
     renderSidebar();
 }
 
+function buildProjectHeader(proj) {
+    const hdr = document.createElement('div');
+    hdr.className = 'proj-hdr';
+    hdr.innerHTML = `
+        <div class="proj-arrow" style="color:${proj.accent_colour}">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,6 8,10 12,6"/></svg>
+        </div>
+        <div class="proj-info">
+            <div class="proj-name">${proj.project_name}</div>
+            ${proj.description ? `<div class="proj-sub">${proj.description}</div>` : ''}
+        </div>
+        <div class="proj-hdr-actions">
+            <button class="btn-sm"><i class="ti ti-plus" aria-hidden="true"></i> Revision</button>
+            <button class="icon-button" title="Edit project"><i class="ti ti-pencil" aria-hidden="true"></i></button>
+        </div>`;
+    hdr.querySelector('.btn-sm').addEventListener('click', e => { e.stopPropagation(); openRevisionModal(proj.project_id); });
+    hdr.querySelector('.icon-button').addEventListener('click', e => { e.stopPropagation(); openProjectModal(proj); });
+    return hdr;
+}
+
+function buildNodeElement(proj, node, connSvg, canvasInner) {
+    const el = document.createElement('div');
+    el.className = 'node-card' + (node.node_id === selNid && proj.project_id === selPid ? ' node-card-sel' : '');
+    el.style.cssText = `position:absolute;left:${node.x||0}px;top:${node.y||0}px;height:${NODE_H}px`;
+    el.style.setProperty('--proj-ac', proj.accent_colour);
+    el.dataset.pid = proj.project_id;
+    el.dataset.nid = node.node_id;
+    el.innerHTML = `
+        <div class="node-card-name">${node.node_name}</div>
+        ${node.description ? `<div class="node-card-desc">${node.description}</div>` : ''}
+        <div class="node-conn-input" data-pid="${proj.project_id}" data-nid="${node.node_id}"></div>
+        <div class="node-conn-handle" title="Drag to Connect"></div>`;
+    el.addEventListener('click', e => { e.stopPropagation(); selectNode(proj.project_id, node.node_id); });
+    el.querySelector('.node-conn-handle').addEventListener('mousedown', e => startConnDrag(e, proj, node, connSvg, canvasInner));
+    return el;
+}
+
 function buildProjectCard(proj) {
     const card = document.createElement('div');
     card.className = 'proj-card' + (proj.collapsed ? ' collapsed' : '');
     card.dataset.id = proj.project_id;
     card.style.setProperty('--proj-ac', proj.accent_colour);
 
-    const arrow = document.createElement('div');
-    arrow.className = 'proj-arrow';
-    arrow.style.color = proj.accent_colour;
-    arrow.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,6 8,10 12,6"/></svg>`;
-
-    const info = document.createElement('div');
-    info.className = 'proj-info';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'proj-name';
-    nameEl.textContent = proj.project_name;
-    info.appendChild(nameEl);
-    if (proj.description) {
-        const sub = document.createElement('div');
-        sub.className = 'proj-sub';
-        sub.textContent = proj.description;
-        info.appendChild(sub);
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'proj-hdr-actions';
-
-    const btnRevision = document.createElement('button');
-    btnRevision.className = 'btn-sm';
-    btnRevision.innerHTML = `<i class="ti ti-plus" aria-hidden="true"></i> Revision`;
-    btnRevision.addEventListener('click', e => { e.stopPropagation(); addRevision(proj.project_id); });
-
-    const btnEdit = document.createElement('button');
-    btnEdit.className = 'icon-button';
-    btnEdit.title = 'Edit project';
-    btnEdit.innerHTML = `<i class="ti ti-pencil" aria-hidden="true"></i>`;
-    btnEdit.addEventListener('click', e => { e.stopPropagation(); openEditProjectModal(proj); });
-
-    actions.append(btnRevision, btnEdit);
-
-    const hdr = document.createElement('div');
-    hdr.className = 'proj-hdr';
-    hdr.append(arrow, info, actions);
+    const hdr  = buildProjectHeader(proj);
     const body = document.createElement('div');
     body.className = 'proj-body';
-    const canvasWrap = document.createElement('div');
-    canvasWrap.className = 'proj-canvas-wrap';
 
     const canvasInner = document.createElement('div');
     canvasInner.className = 'proj-canvas-inner';
 
-    // SVG connection layer — appended first so it renders behind nodes (DOM order)
+    // SVG layer appended first so it renders behind the node cards
     const connSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     connSvg.classList.add('proj-conn-svg');
     canvasInner.appendChild(connSvg);
@@ -838,8 +560,7 @@ function buildProjectCard(proj) {
     const nodes = proj.nodes || [];
     layoutNodes(proj);
     const sz = projCanvasSize(proj);
-    const bodyH = sz.h + 10;
-    body.style.maxHeight = proj.collapsed ? '0' : bodyH + 'px';
+    body.style.maxHeight = proj.collapsed ? '0' : (sz.h + 10) + 'px';
 
     if (nodes.length === 0) {
         const emptyMsg = document.createElement('div');
@@ -849,53 +570,14 @@ function buildProjectCard(proj) {
     } else {
         canvasInner.style.width  = sz.w + 'px';
         canvasInner.style.height = sz.h + 'px';
-        connSvg.setAttribute('width', sz.w);
+        connSvg.setAttribute('width',  sz.w);
         connSvg.setAttribute('height', sz.h);
-
-        nodes.forEach(node => {
-            const nodeCard = document.createElement('div');
-            nodeCard.className = 'node-card' + (node.node_id === selNid && proj.project_id === selPid ? ' node-card-sel' : '');
-            nodeCard.style.position = 'absolute';
-            nodeCard.style.left = (node.x || 0) + 'px';
-            nodeCard.style.top  = (node.y || 0) + 'px';
-            nodeCard.style.height = NODE_H + 'px';
-            nodeCard.style.setProperty('--proj-ac', proj.accent_colour);
-            nodeCard.dataset.pid = proj.project_id;
-            nodeCard.dataset.nid = node.node_id;
-            nodeCard.addEventListener('click', e => { e.stopPropagation(); selectNode(proj.project_id, node.node_id); });
-
-            const nameEl = document.createElement('div');
-            nameEl.className = 'node-card-name';
-            nameEl.textContent = node.node_name;
-            nodeCard.appendChild(nameEl);
-
-            if (node.description) {
-                const descEl = document.createElement('div');
-                descEl.className = 'node-card-desc';
-                descEl.textContent = node.description;
-                nodeCard.appendChild(descEl);
-            }
-
-            // Input socket (left) — visible target during drag
-            const inputSocket = document.createElement('div');
-            inputSocket.className = 'node-conn-input';
-            inputSocket.dataset.pid = proj.project_id;
-            inputSocket.dataset.nid = node.node_id;
-            nodeCard.appendChild(inputSocket);
-
-            // Output grab handle (right) — drag to connect
-            const handle = document.createElement('div');
-            handle.className = 'node-conn-handle';
-            handle.title = 'Drag to connect';
-            handle.addEventListener('mousedown', e => startConnDrag(e, proj, node, connSvg, canvasInner));
-            nodeCard.appendChild(handle);
-
-            canvasInner.appendChild(nodeCard);
-        });
-
+        nodes.forEach(node => canvasInner.appendChild(buildNodeElement(proj, node, connSvg, canvasInner)));
         renderConnections(proj, connSvg, canvasInner);
     }
 
+    const canvasWrap = document.createElement('div');
+    canvasWrap.className = 'proj-canvas-wrap';
     canvasWrap.appendChild(canvasInner);
     body.appendChild(canvasWrap);
 
@@ -943,23 +625,23 @@ async function deleteProject(projectId) {
 }
 
 // --- Modal Open / Close ---
-function openProjectModal() {
-    modalMode = 'add';
-    activeProjectId = null;
+// Pass a proj object to open in edit mode, nothing to open in add mode
+function openProjectModal(proj = null) {
+    modalMode       = proj ? 'edit' : 'add';
+    activeProjectId = proj?.project_id ?? null;
 
-    document.getElementById('printer-modal-title').textContent = 'NEW PROJECT';
-    document.getElementById('printer-confirm').textContent = 'Add Project';
-    document.getElementById('printer-remove').style.display = 'none';
+    document.getElementById('printer-modal-title').textContent = proj ? 'EDIT PROJECT' : 'NEW PROJECT';
+    document.getElementById('printer-confirm').textContent     = proj ? 'Save Changes'  : 'Add Project';
+    document.getElementById('printer-remove').style.display   = proj ? ''      : 'none';
 
-    document.getElementById('p-name').value = '';
+    document.getElementById('p-name').value = proj?.project_name ?? '';
     document.getElementById('p-name').classList.remove('input-error');
-    document.getElementById('p-description').value = '';
+    document.getElementById('p-description').value = proj?.description ?? '';
     document.getElementById('ai-user-prompt').value = '';
     document.getElementById('ai-btn-wrap').classList.remove('generating', 'error', 'ready');
     document.getElementById('ai-generate-btn').classList.remove('error', 'ready');
 
-    pickColour(COLOURS[0].hex);
-
+    pickColour(proj?.accent_colour ?? COLOURS[0].hex);
     document.getElementById('printer-modal').classList.add('open');
 }
 
@@ -968,32 +650,8 @@ function closeProjectModal() {
     document.getElementById('printer-modal').classList.remove('open');
 }
 
-function openEditProjectModal(proj) {
-    modalMode = 'edit';
-    activeProjectId = proj.project_id;
-
-    document.getElementById('printer-modal-title').textContent = 'EDIT PROJECT';
-    document.getElementById('printer-confirm').textContent = 'Save Changes';
-    document.getElementById('printer-remove').style.display = '';
-
-    document.getElementById('p-name').value = proj.project_name;
-    document.getElementById('p-name').classList.remove('input-error');
-    document.getElementById('p-description').value = proj.description || '';
-    document.getElementById('ai-user-prompt').value = '';
-    document.getElementById('ai-btn-wrap').classList.remove('generating', 'error', 'ready');
-    document.getElementById('ai-generate-btn').classList.remove('error', 'ready');
-
-    pickColour(proj.accent_colour);
-
-    document.getElementById('printer-modal').classList.add('open');
-}
-
 // --- Revision Modal ---
 let activeRevisionProjectId = null;
-
-function addRevision(projectId) {
-    openRevisionModal(projectId);
-}
 
 function openRevisionModal(projectId) {
     activeRevisionProjectId = projectId;
@@ -1014,121 +672,63 @@ function closeRevisionModal() {
 }
 
 async function confirmRevisionModal() {
-    const name = document.getElementById('r-name').value.trim();
-    if (!name) {
-        document.getElementById('r-name').focus();
-        return;
-    }
-    const description = document.getElementById('r-description').value.trim();
-
-    // Duplicate name check within this project
     const proj = PROJECTS.find(p => p.project_id === activeRevisionProjectId);
-    const nameLower = name.toLowerCase();
-    if (proj?.nodes?.some(n => n.node_name.toLowerCase() === nameLower)) {
-        const nameEl = document.getElementById('r-name');
-        nameEl.classList.add('input-error');
-        nameEl.focus();
-        showToast('A revision with this name already exists');
-        return;
-    }
+    const existingNames = (proj?.nodes || []).map(n => n.node_name.toLowerCase());
+    const name = validateUniqueName('r-name', existingNames, 'A revision with this name already exists');
+    if (!name) return;
 
+    const description = document.getElementById('r-description').value.trim();
     const api = getApi();
-    if (!api) { showToast('API not ready'); return; }
+    if (!api) { showToast('API not ready', true); return; }
     try {
         const node = await api.CREATE_NODE(activeRevisionProjectId, name, description);
-        const proj = PROJECTS.find(p => p.project_id === activeRevisionProjectId);
         if (proj) {
             if (!proj.nodes) proj.nodes = [];
             proj.nodes.push(node);
         }
         renderProjectGrid();
         closeRevisionModal();
-    } catch (e) {
-        console.error('CREATE_NODE failed:', e);
-    }
+    } catch (e) { console.error('CREATE_NODE failed:', e); }
 }
 
-async function generateRevisionWithAI() {
-    const prompt = document.getElementById('r-ai-prompt').value.trim();
-    if (!prompt) {
-        document.getElementById('r-ai-prompt').focus();
-        return;
-    }
-
-    const btn = document.getElementById('r-ai-generate-btn');
-    const wrap = document.getElementById('r-ai-btn-wrap');
-    const api = getApi();
-    if (!api) { showToast('ERROR: API NOT READY'); return; }
-
-    btn.disabled = true;
-    btn.classList.remove('error', 'ready');
-    wrap.classList.remove('error', 'ready');
-    wrap.classList.add('generating');
-
-    try {
-        const result = await api.GENERATE_REVISION_DETAILS(prompt);
-        if (result.name) document.getElementById('r-name').value = result.name;
-        if (result.description) document.getElementById('r-description').value = result.description;
-    } catch (err) {
-        const msg = err?.message || err?.toString() || 'Unknown error';
-        console.error('AI revision generation failed:', msg);
-        btn.classList.add('error');
-        wrap.classList.add('error');
-        showToast('AI failed: ' + msg.slice(0, 60));
-        setTimeout(() => {
-            btn.classList.remove('error');
-            wrap.classList.remove('error');
-        }, 3500);
-    } finally {
-        btn.disabled = false;
-        wrap.classList.remove('generating');
-        const hasText = document.getElementById('r-ai-prompt').value.trim().length > 0;
-        btn.classList.toggle('ready', hasText && !btn.classList.contains('error'));
-        wrap.classList.toggle('ready', hasText && !wrap.classList.contains('error'));
-    }
+function generateRevisionWithAI() {
+    return generateAI({ promptId: 'r-ai-prompt', btnId: 'r-ai-generate-btn', apiMethod: 'GENERATE_REVISION_DETAILS', nameId: 'r-name', descId: 'r-description' });
 }
 
-// --- Confirm (Add) ---
+// Returns the trimmed name if valid and unique, otherwise shows the error and returns null
+function validateUniqueName(inputId, existingNames, toastMsg) {
+    const el = document.getElementById(inputId);
+    const name = el.value.trim();
+    if (!name) { el.focus(); return null; }
+    if (existingNames.includes(name.toLowerCase())) {
+        el.classList.add('input-error');
+        el.focus();
+        showToast(toastMsg, true);
+        return null;
+    }
+    return name;
+}
+
+// --- Confirm (Add / Edit) ---
 async function confirmProjectModal() {
-    const name = document.getElementById('p-name').value.trim();
-    if (!name) {
-        document.getElementById('p-name').focus();
-        return;
-    }
+    const existingNames = PROJECTS
+        .filter(p => modalMode !== 'edit' || p.project_id !== activeProjectId)
+        .map(p => p.project_name.toLowerCase());
+    const name = validateUniqueName('p-name', existingNames, 'A project with this name already exists');
+    if (!name) return;
 
     const description = document.getElementById('p-description').value.trim();
-
-    // Duplicate name check
-    const nameLower = name.toLowerCase();
-    const duplicate = PROJECTS.some(p =>
-        p.project_name.toLowerCase() === nameLower &&
-        (modalMode !== 'edit' || p.project_id !== activeProjectId)
-    );
-    if (duplicate) {
-        const nameEl = document.getElementById('p-name');
-        nameEl.classList.add('input-error');
-        nameEl.focus();
-        showToast('A project with this name already exists');
-        return;
-    }
-
     const api = getApi();
-    if (!api) { showToast('API not ready'); return; }
+    if (!api) { showToast('API not ready', true); return; }
 
     if (modalMode === 'edit') {
         try {
-            const updated = await api.UPDATE_PROJECT(activeProjectId, {
-                project_name: name,
-                description,
-                accent_colour: selectedAccentColour,
-            });
+            const updated = await api.UPDATE_PROJECT(activeProjectId, { project_name: name, description, accent_colour: selectedAccentColour });
             const idx = PROJECTS.findIndex(p => p.project_id === activeProjectId);
             if (idx !== -1 && updated) PROJECTS[idx] = updated;
             renderProjectGrid();
             closeProjectModal();
-        } catch (err) {
-            console.error('UPDATE_PROJECT failed:', err);
-        }
+        } catch (err) { console.error('UPDATE_PROJECT failed:', err); }
     } else {
         try {
             const proj = await api.CREATE_PROJECT(name, selectedAccentColour, description);
@@ -1136,9 +736,7 @@ async function confirmProjectModal() {
             renderProjectGrid();
             updateStats();
             closeProjectModal();
-        } catch (err) {
-            console.error('CREATE_PROJECT failed:', err);
-        }
+        } catch (err) { console.error('CREATE_PROJECT failed:', err); }
     }
 }
 
@@ -1160,12 +758,16 @@ async function removeProjectFromModal() {
 }
 
 // --- Boot ---
-async function loadProjects(retries = 5) {
-    const api = getApi();
-    if (!api) {
-        if (retries > 0) setTimeout(() => loadProjects(retries - 1), 250);
-        return;
+async function loadProjects() {
+    // pywebview sets up the API bridge asynchronously — retry a few times before giving up
+    let api = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        api = getApi();
+        if (api) break;
+        await new Promise(resolve => setTimeout(resolve, 250));
     }
+    if (!api) return;
+
     try {
         PROJECTS = await api.LIST_PROJECTS() || [];
     } catch (e) {
