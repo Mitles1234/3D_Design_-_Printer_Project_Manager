@@ -198,11 +198,19 @@ function projCanvasSize(proj) {
 // --- Edge geometry helpers ---
 function outPt(n) { return { x: n.x + NW, y: n.y + NODE_H/2 }; }
 function inPt(n)  { return { x: n.x,      y: n.y + NODE_H/2 }; }
-function midPt(f, t) { const o=outPt(f),i=inPt(t); return { x:(o.x+i.x)/2, y:(o.y+i.y)/2 }; }
+function midPt(f, t) {
+    const o=outPt(f), i=inPt(t);
+    if (Math.abs(f.x - t.x) > COL_GAP) return { x:(o.x+i.x)/2, y: o.y + ROW_GAP/2 };
+    return { x:(o.x+i.x)/2, y:(o.y+i.y)/2 };
+}
 
-// Simple S-curve bezier — control points pulled horizontally from each end
+// Long connection (>1 col): arc at from-row height, apex dips half a row
 function edgePath(fn, tn) {
     const o = outPt(fn), i = inPt(tn);
+    if (Math.abs(fn.x - tn.x) > COL_GAP) {
+        const mx = (o.x + i.x) / 2, cy = o.y + ROW_GAP;
+        return `M${o.x} ${o.y} Q${mx} ${cy} ${i.x} ${o.y}`;
+    }
     const dx = Math.max(Math.abs(i.x - o.x) * 0.45, 60);
     return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
 }
