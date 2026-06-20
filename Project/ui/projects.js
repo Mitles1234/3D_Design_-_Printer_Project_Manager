@@ -97,8 +97,6 @@ function renderMd(raw) {
 
 // --- API handle ---
 // pywebview sets window.pywebview.api once the Python bridge is ready.
-// The try/catch is only needed for the parent-frame check — accessing window.parent
-// throws a security error if the page is ever loaded cross-origin.
 function getApi() {
     if (window.pywebview?.api) return window.pywebview.api;
     try {
@@ -142,7 +140,9 @@ function layoutNodes(proj) {
     const conns = proj.connections || [];
 
     const outEdges = {}, inDeg = {};
+
     nodes.forEach(n => { outEdges[n.node_id] = []; inDeg[n.node_id] = 0; });
+    
     conns.forEach(c => {
         if (outEdges[c.from] !== undefined && inDeg[c.to] !== undefined) {
             outEdges[c.from].push(c.to);
