@@ -134,12 +134,14 @@ def _init_project_folder(project_id: str, name: str, description: str = "") -> N
         lines += ["## Notes", "", ""]
         notes.write_text("\n".join(lines), encoding="utf-8")
 
-def _init_node_folder(project_id: str, node_id: str, name: str, description: str = "") -> None:
+def _init_node_folder(project_id: str, node_id: str, name: str, description: str = "", date: str = "") -> None:
     folder = _node_dir(project_id, node_id)
     folder.mkdir(parents=True, exist_ok=True)
     notes = folder / "notes.md"
     if not notes.exists():
         lines = [f"# {name}", ""]
+        if date:
+            lines += [f"**Date:** {date}", ""]
         if description:
             lines += ["## Changes & Improvements", "", description, ""]
         lines += ["## Notes", "", ""]
@@ -222,7 +224,7 @@ def create_node(project_id, name, description=""):
             project.setdefault("nodes", []).append(node)
             project["last_updated"] = now
             _write_projects(projects)
-            _init_node_folder(project_id, node["node_id"], name, description)
+            _init_node_folder(project_id, node["node_id"], name, description, node["date"])
             node["description"] = _extract_node_description(project_id, node["node_id"])
             return node
     return None

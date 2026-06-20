@@ -6,16 +6,8 @@
     "accent_colour": "#ef4444",
     "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-19T10:18:09.367246",
+    "last_updated": "2026-06-19T17:34:16.501217",
     "connections": [
-      {
-        "from": "node_ZIB-8FA",
-        "to": "node_9P7-RQW"
-      },
-      {
-        "from": "node_LN3-KBA",
-        "to": "node_7GD-XF5"
-      },
       {
         "from": "node_LN3-KBA",
         "to": "node_O33-HUL"
@@ -23,6 +15,22 @@
       {
         "from": "node_7GD-XF5",
         "to": "node_ZIB-8FA"
+      },
+      {
+        "from": "node_O33-HUL",
+        "to": "node_7GD-XF5"
+      },
+      {
+        "from": "node_9P7-RQW",
+        "to": "node_7GD-XF5"
+      },
+      {
+        "from": "node_LN3-KBA",
+        "to": "node_9P7-RQW"
+      },
+      {
+        "from": "node_LN3-KBA",
+        "to": "node_7GD-XF5"
       }
     ],
     "nodes": [
@@ -32,7 +40,7 @@
         "date": "2026-06-12",
         "files": [],
         "created_at": "2026-06-13T14:50:43.708815",
-        "last_updated": "2026-06-19T09:32:53.264862"
+        "last_updated": "2026-06-18T23:11:36.573078"
       },
       {
         "node_id": "node_O33-HUL",
@@ -56,7 +64,7 @@
         "date": "2026-06-15",
         "files": [],
         "created_at": "2026-06-15T14:20:00.330517",
-        "last_updated": "2026-06-19T09:08:11.373938"
+        "last_updated": "2026-06-15T14:20:00.330517"
       },
       {
         "node_id": "node_9P7-RQW",
@@ -64,7 +72,7 @@
         "date": "2026-09-17",
         "files": [],
         "created_at": "2026-06-14T17:35:14.459983",
-        "last_updated": "2026-06-19T09:08:15.251695"
+        "last_updated": "2026-06-14T22:15:56.155532"
       }
     ]
   },
