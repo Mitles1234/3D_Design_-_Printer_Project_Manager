@@ -105,3 +105,8 @@ iframe {
 .settings-icon:hover {
     transform: rotate(90deg);
 }
+
+.modal-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}

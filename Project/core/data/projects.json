@@ -6,19 +6,11 @@
     "accent_colour": "#ef4444",
     "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-19T17:34:16.501217",
+    "last_updated": "2026-06-21T11:18:27.799052",
     "connections": [
       {
         "from": "node_LN3-KBA",
         "to": "node_O33-HUL"
-      },
-      {
-        "from": "node_7GD-XF5",
-        "to": "node_ZIB-8FA"
-      },
-      {
-        "from": "node_O33-HUL",
-        "to": "node_7GD-XF5"
       },
       {
         "from": "node_9P7-RQW",
@@ -29,8 +21,8 @@
         "to": "node_9P7-RQW"
       },
       {
-        "from": "node_LN3-KBA",
-        "to": "node_7GD-XF5"
+        "from": "node_9P7-RQW",
+        "to": "node_ZIB-8FA"
       }
     ],
     "nodes": [
