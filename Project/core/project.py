@@ -1,14 +1,16 @@
+from curses import window
 import json
 import os
 import re
 from datetime import datetime, date as date_type
 from pathlib import Path
+import shutil
 from .general import *
-#from .ai import run_ai
 
 #--- Generic ---
 def _now_iso():
     return datetime.now().isoformat()
+
 
 def _projects_path():
     return Path(__file__).resolve().parent / "data" / "projects.json"
@@ -110,6 +112,15 @@ def _new_id(prefix, *groups):
     except Exception:
         value = datetime.now().strftime("%Y%m%d%H%M%S")
     return f"{prefix}_{value}"
+
+def _file_types():
+    settings_path = Path(__file__).resolve().parent / "data" / "settings.json"
+    try:
+        with settings_path.open("r", encoding="utf-8") as handle:
+            settings = json.load(handle)
+            return settings.get("File_Extensions", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
 
 
 # --- Folder helpers ---
@@ -437,3 +448,59 @@ def get_file(project_id, node_id, filename):
         return None
     files = node.get("files", [])
     return filename if filename in files else None
+
+
+
+#--- File Handling ---
+def add_files_to_node(project_id, node_id, files):
+    if not files:
+        return {"message": "No files provided", "error": True}
+    added, errors = [], []
+    for file in files:
+        src = Path(file)
+        if not src.is_file():
+            errors.append(f"Not found: {src.name}")
+            continue
+        dest = _node_dir(project_id, node_id) / src.name
+        if dest.exists():
+            errors.append(f"Already exists: {src.name}")
+            continue
+        shutil.copy2(src, dest)
+        add_file(project_id, node_id, src.name)
+        added.append(src.name)
+    node = get_node(project_id, node_id)
+    files_list = node.get("files", []) if node else []
+    if added and not errors:
+        msg = f"Added {len(added)} file{'s' if len(added) > 1 else ''}"
+    elif added:
+        msg = f"Added {len(added)}, skipped {len(errors)}"
+    else:
+        msg = errors[0] if errors else "No files added"
+    return {"message": msg, "error": not added, "files": files_list}
+
+def remove_file_from_node(project_id, node_id, filename):
+    file_path = _node_dir(project_id, node_id) / filename
+    if not file_path.exists():
+        return {"message": f"File not found: {filename}", "error": True}
+    try:
+        trash = Path.home() / ".Trash"
+        dest = trash / file_path.name
+        if dest.exists():
+            dest = trash / f"{file_path.stem}_{file_path.stat().st_ino}{file_path.suffix}"
+        shutil.move(str(file_path), dest)
+    except Exception as e:
+        return {"message": f"Could not move to trash: {e}", "error": True}
+    remove_file(project_id, node_id, filename)
+    node = get_node(project_id, node_id)
+    files_list = node.get("files", []) if node else []
+    return {"message": f"Removed {filename}", "error": False, "files": files_list}
+
+def list_files_in_node(project_id, node_id):
+    files = []
+    folder_path = _node_dir(project_id, node_id)
+    if not folder_path.exists():
+        return files
+    for item in folder_path.iterdir():
+        if item.is_file() and item.name != "notes.md":
+            files.append(item.name)
+    return files

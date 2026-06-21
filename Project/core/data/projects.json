@@ -6,7 +6,7 @@
     "accent_colour": "#ef4444",
     "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-21T11:18:27.799052",
+    "last_updated": "2026-06-21T18:48:34.020881",
     "connections": [
       {
         "from": "node_LN3-KBA",
@@ -38,9 +38,11 @@
         "node_id": "node_O33-HUL",
         "node_name": "TPU Transition",
         "date": "2026-06-14",
-        "files": [],
+        "files": [
+          "Brake Pad.stp"
+        ],
         "created_at": "2026-06-14T18:54:41.398748",
-        "last_updated": "2026-06-14T18:54:41.398748"
+        "last_updated": "2026-06-21T18:48:34.020881"
       },
       {
         "node_id": "node_7GD-XF5",

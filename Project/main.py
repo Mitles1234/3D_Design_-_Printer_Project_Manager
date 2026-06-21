@@ -17,6 +17,10 @@ except ModuleNotFoundError:
 
 
 class API:
+    def __init__(self):
+        self.window = None
+
+    # --- Project Management ---
     def CREATE_PROJECT(self, name, accent_colour, description=""):
         return project.create_project(name, accent_colour, description)
 
@@ -64,7 +68,24 @@ class API:
 
     def GET_PROJECT_STATS(self):
         return project.get_stats()
+    
+    def ADD_FILE_TO_NODE(self, project_id, node_id):
+        pattern = ";".join(f"*.{ext}" for ext in project._file_types())
+        file_types = (f"Design files ({pattern})", "All files (*.*)")
+        result = self.window.create_file_dialog(
+            webview.OPEN_DIALOG, allow_multiple=True, file_types=file_types
+        )
+        if not result:
+            return {"message": "No file selected", "error": True}
+        return project.add_files_to_node(project_id, node_id, result)
 
+    def REMOVE_FILE_FROM_NODE(self, project_id, node_id, filename):
+        return project.remove_file_from_node(project_id, node_id, filename)
+    
+    def LIST_FILES_IN_NODE(self, project_id, node_id):
+        return project.list_files_in_node(project_id, node_id)
+
+    # --- Equipment Management --- 
     def GET_EQUIPMENT_STATS(self):
         return equipment.get_stats()
 
@@ -126,11 +147,14 @@ class API:
 api = API()
 
 window = webview.create_window(
-    "3D Design Manger",       # Window title
-    "ui/index.html",          # Your HTML file
-    js_api=api,               # Expose the API class to JS
+    "3D Design Manger",
+    "ui/index.html",
+    js_api=api,
     width=900,
     height=600,
-    
 )
-webview.start(icon='logo.png')
+
+def on_started():
+    api.window = window
+
+webview.start(on_started, icon='logo.png')

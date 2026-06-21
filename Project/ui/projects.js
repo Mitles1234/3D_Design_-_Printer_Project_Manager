@@ -432,12 +432,52 @@ function buildNotesPanel(panel, node) {
 
 function buildFilesPanel(panel, node) {
     const files = node.files || [];
-    panel.innerHTML = files.length
-        ? `<div>${files.map(f => `<span class="sb-file-chip">${f}</span>`).join('')}</div>`
-        : `<span style="font-size:12px;color:var(--text-faint);font-style:italic">No files attached yet</span>`;
+    if (files.length) {
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '8px';
+        files.forEach(f => {
+            const chip = document.createElement('span');
+            chip.className = 'sb-file-chip';
+            chip.innerHTML = `${f}<button class="sb-file-remove" title="Remove file" data-filename="${f}">×</button>`;
+            chip.querySelector('.sb-file-remove').addEventListener('click', async () => {
+                const api = getApi();
+                if (!api) return;
+                try {
+                    const res = await api.REMOVE_FILE_FROM_NODE(selPid, selNid, f);
+                    showToast(res.message, res.error);
+                    if (!res.error) {
+                        const p = PROJECTS.find(pr => pr.project_id === selPid);
+                        const n = p?.nodes?.find(nd => nd.node_id === selNid);
+                        if (n) n.files = res.files;
+                        renderSidebar();
+                    }
+                } catch (e) { console.error('REMOVE_FILE_FROM_NODE failed:', e); }
+            });
+            wrap.appendChild(chip);
+        });
+        panel.innerHTML = '';
+        panel.appendChild(wrap);
+    } else {
+        panel.innerHTML = `<span style="font-size:12px;color:var(--text-faint);font-style:italic">No files attached yet</span>`;
+    }
+
     const addBtn = document.createElement('button');
     addBtn.className = 'sb-add';
     addBtn.innerHTML = `<i class="ti ti-paperclip" style="font-size:12px"></i> Attach files`;
+    addBtn.addEventListener('click', async () => {
+        const api = getApi();
+        if (!api) return;
+        try {
+            const res = await api.ADD_FILE_TO_NODE(selPid, selNid);
+            showToast(res.message, res.error);
+            if (res && !res.error) {
+                const p = PROJECTS.find(pr => pr.project_id === selPid);
+                const n = p?.nodes?.find(nd => nd.node_id === selNid);
+                if (n) n.files = res.files;
+                renderSidebar();
+            }
+        } catch (e) { console.error('ADD_FILE_TO_NODE failed:', e); }
+    });
     panel.appendChild(addBtn);
 }
 

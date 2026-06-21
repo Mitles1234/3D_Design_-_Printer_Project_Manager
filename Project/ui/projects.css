@@ -639,15 +639,30 @@ body.conn-dragging .node-conn-input:hover {
 /* Files tab */
 .sb-file-chip {
   font-size: 11px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 6px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-family: var(--mono);
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin: 2px;
 }
+
+.sb-file-remove {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.sb-file-remove:hover { color: var(--danger, #e05c5c); }
 
 .sb-add {
   font-size: 11px;
