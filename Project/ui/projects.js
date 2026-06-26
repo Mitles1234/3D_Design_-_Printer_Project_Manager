@@ -200,16 +200,42 @@ function outPt(n) { return { x: n.x + NW, y: n.y + NODE_H/2 }; }
 function inPt(n)  { return { x: n.x,      y: n.y + NODE_H/2 }; }
 function midPt(f, t) {
     const o=outPt(f), i=inPt(t);
-    if (Math.abs(f.x - t.x) > COL_GAP) return { x:(o.x+i.x)/2, y: o.y + ROW_GAP/2 };
+    if (Math.abs(o.x - i.x) > COL_GAP) {
+        if (i.y >= o.y) {
+            return { x:(o.x+i.x)/2, y: o.y + ROW_GAP/2 };
+        }
+        else if (i.y < o.y) {
+            return { x:(o.x+i.x)/2, y: o.y - ROW_GAP/2 };
+        }
+    }
+
     return { x:(o.x+i.x)/2, y:(o.y+i.y)/2 };
 }
 
-// Long connection (>1 col): arc at from-row height, apex dips half a row
 function edgePath(fn, tn) {
     const o = outPt(fn), i = inPt(tn);
     if (Math.abs(fn.x - tn.x) > COL_GAP) {
-        const mx = (o.x + i.x) / 2, cy = o.y + ROW_GAP;
-        return `M${o.x} ${o.y} Q${mx} ${cy} ${i.x} ${o.y}`;
+        const dx = 45;
+        var hz = 0;
+        while (hz*COL_GAP+2*dx < i.x - o.x) {
+            hz++
+        }
+
+        if (o.y < i.y) {
+            return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${o.x+dx} ${o.y+ROW_GAP/2} ${o.x+2*dx} ${o.y+ROW_GAP/2} 
+            M${o.x+2*dx} ${o.y+ROW_GAP/2} L ${o.x+hz*COL_GAP} ${o.y+ROW_GAP/2} 
+            M${o.x+hz*COL_GAP} ${o.y+ROW_GAP/2} C${o.x+hz*COL_GAP+dx} ${o.y+ROW_GAP/2} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
+        }
+        else if (o.y === i.y) {
+            return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${o.x+dx} ${o.y+ROW_GAP/2} ${o.x+2*dx} ${o.y+ROW_GAP/2} 
+            M${o.x+2*dx} ${o.y+ROW_GAP/2} L ${i.x-2*dx} ${i.y+ROW_GAP/2} 
+            M${i.x-2*dx} ${i.y+ROW_GAP/2} C${i.x-dx} ${i.y+ROW_GAP/2} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
+        }
+        else if (o.y > i.y){
+            return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${o.x+dx} ${o.y-ROW_GAP/2} ${o.x+2*dx} ${o.y-ROW_GAP/2} 
+            M${o.x+2*dx} ${o.y-ROW_GAP/2} L ${o.x+hz*COL_GAP} ${o.y-ROW_GAP/2} 
+            M${o.x+hz*COL_GAP} ${o.y-ROW_GAP/2} C${o.x+hz*COL_GAP+dx} ${o.y-ROW_GAP/2} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
+        }
     }
     const dx = Math.max(Math.abs(i.x - o.x) * 0.45, 60);
     return `M${o.x} ${o.y} C${o.x+dx} ${o.y} ${i.x-dx} ${i.y} ${i.x} ${i.y}`;
@@ -282,7 +308,7 @@ function renderConnections(proj, svg, inner) {
         const mid = midPt(fn, tn);
         const delBtn = document.createElement('button');
         delBtn.className = 'conn-del-html';
-        delBtn.title = 'Delete connection';
+        delBtn.title = 'Delete Connection';
         delBtn.innerHTML = `<i class="ti ti-x" style="font-size:9px;line-height:1"></i>`;
         delBtn.style.left = `${mid.x}px`;
         delBtn.style.top  = `${mid.y}px`;
