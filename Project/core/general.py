@@ -22,3 +22,27 @@ def settings(setting):
         data = json.load(handle)
     return data.get(setting)
 
+def get_all_settings():
+    settings_path = Path(__file__).resolve().parent / "data" / "settings.json"
+    try:
+        with settings_path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def update_settings(updates: dict):
+    settings_path = Path(__file__).resolve().parent / "data" / "settings.json"
+    try:
+        with settings_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
+    if "Project_Directory" in updates:
+        new_dir = updates["Project_Directory"]
+        if new_dir and not Path(new_dir).is_dir():
+            updates = {k: v for k, v in updates.items() if k != "Project_Directory"}
+    data.update(updates)
+    with settings_path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=4)
+    return data
+

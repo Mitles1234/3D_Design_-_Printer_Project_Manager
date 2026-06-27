@@ -66,6 +66,18 @@ class API:
     def VALIDATE_CONNECTION(self, project_id):
         return project.validate_connection(project_id)
 
+    def GET_SETTINGS(self):
+        return project.get_all_settings()
+
+    def UPDATE_SETTINGS(self, updates):
+        return project.update_settings(updates)
+
+    def PICK_DIRECTORY(self):
+        result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        if not result:
+            return None
+        return result[0]
+
     def GET_PROJECT_STATS(self):
         return project.get_stats()
     

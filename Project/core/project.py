@@ -13,7 +13,7 @@ def _now_iso():
 
 
 def _projects_path():
-    return Path(__file__).resolve().parent / "data" / "projects.json"
+    return _projects_dir() / "projects.json"
 
 
 def _parse_md_fields(content: str) -> dict:
@@ -126,6 +126,11 @@ def _file_types():
 # --- Folder helpers ---
 
 def _projects_dir() -> Path:
+    configured = settings("Project_Directory")
+    if configured:
+        p = Path(configured)
+        if p.is_dir():
+            return p
     return Path(__file__).resolve().parent / "data" / "projects"
 
 def _project_dir(project_id: str) -> Path:

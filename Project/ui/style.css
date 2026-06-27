@@ -110,3 +110,127 @@ iframe {
   opacity: 1;
   pointer-events: all;
 }
+
+.dir-field {
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(0, 149, 187, 0.35);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.dir-field-path {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-family: 'Inter', Arial, sans-serif;
+  color: #3d5b66;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  min-width: 0;
+}
+
+.dir-field-btn {
+  background: #eef7fb;
+  border: none;
+  border-left: 1px solid rgba(0, 149, 187, 0.2);
+  cursor: pointer;
+  padding: 7px 12px;
+  color: #3d5b66;
+  display: flex;
+  align-items: center;
+  transition: background 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+
+.dir-field-btn:hover {
+  background: rgba(0, 149, 187, 0.1);
+  color: #0f2f3a;
+}
+
+.ext-list-wrap {
+  border: 1px solid rgba(0, 149, 187, 0.35);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.ext-list {
+  max-height: 180px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.ext-list-item {
+  padding: 7px 12px;
+  font-size: 13px;
+  color: #0f2f3a;
+  border-bottom: 1px solid rgba(0, 149, 187, 0.15);
+  cursor: pointer;
+  user-select: none;
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.ext-list-item:last-child {
+  border-bottom: none;
+}
+
+.ext-list-item.selected {
+  background: rgba(0, 149, 187, 0.12);
+  color: #007aa1;
+}
+
+.ext-list-item.editing {
+  padding: 4px 8px;
+  background: #fff;
+}
+
+.ext-list-item.editing.selected {
+  background: #fff;
+}
+
+.ext-list-input {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: 'Inter', Arial, sans-serif;
+  color: #0f2f3a;
+  outline: none;
+  width: 100%;
+}
+
+.ext-list-toolbar {
+  display: flex;
+  border-top: 1px solid rgba(0, 149, 187, 0.35);
+  background: #eef7fb;
+}
+
+.ext-list-btn {
+  background: none;
+  border: none;
+  border-right: 1px solid rgba(0, 149, 187, 0.2);
+  cursor: pointer;
+  padding: 2px 11px 4px;
+  font-size: 20px;
+  line-height: 1;
+  color: #3d5b66;
+  transition: background 0.1s, color 0.1s;
+}
+
+.ext-list-btn:last-child {
+  border-right: none;
+}
+
+.ext-list-btn:hover:not(:disabled) {
+  background: rgba(0, 149, 187, 0.1);
+  color: #0f2f3a;
+}
+
+.ext-list-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
