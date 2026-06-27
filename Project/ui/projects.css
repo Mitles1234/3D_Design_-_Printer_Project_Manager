@@ -1,3 +1,8 @@
+#project-actions.search-open #project-search-open,
+#project-actions.search-open #project-new {
+  display: none;
+}
+
 /* --- Modal pair: equal-height side-by-side layout --- */
 .modal-pair {
   display: flex;

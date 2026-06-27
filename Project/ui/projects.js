@@ -1,6 +1,9 @@
 // --- Project store ---
 let PROJECTS = [];
 
+// --- Search ---
+let _searchQuery = '';
+
 // --- Modal State ---
 let modalMode = 'add';
 let activeProjectId = null;
@@ -568,11 +571,34 @@ function renderSidebar() {
     else                             buildDetailsPanel(panel, proj, node);
 }
 
+function setPrinterSearch(value) {
+    _searchQuery = value.trim().toLowerCase();
+    renderProjectGrid();
+}
+
+function openProjectSearch() {
+    document.getElementById('project-actions').classList.add('search-open');
+    document.getElementById('project-search').focus();
+}
+
+function closeProjectSearch() {
+    document.getElementById('project-actions').classList.remove('search-open');
+    document.getElementById('project-search').value = '';
+    _searchQuery = '';
+    renderProjectGrid();
+}
+
+document.getElementById('project-search-open').addEventListener('click', openProjectSearch);
+document.getElementById('project-search-close').addEventListener('click', closeProjectSearch);
+
 // --- Project grid ---
 function renderProjectGrid() {
     const grid = document.getElementById('printers-grid');
     grid.innerHTML = '';
-    PROJECTS.forEach(proj => grid.appendChild(buildProjectCard(proj)));
+    const visible = _searchQuery
+        ? PROJECTS.filter(p => p.project_name.toLowerCase().includes(_searchQuery))
+        : PROJECTS;
+    visible.forEach(proj => grid.appendChild(buildProjectCard(proj)));
     renderSidebar();
 }
 

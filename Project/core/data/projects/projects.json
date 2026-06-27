@@ -4,36 +4,36 @@
     "project_name": "Amazing Kup",
     "description": "A Truely Amazing Kup",
     "accent_colour": "#ef4444",
-    "collapsed": false,
+    "collapsed": true,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-26T15:09:17.538749",
+    "last_updated": "2026-06-27T15:18:03.561208",
     "connections": [
-      {
-        "from": "node_ZIB-8FA",
-        "to": "node_LN3-KBA"
-      },
-      {
-        "from": "node_7GD-XF5",
-        "to": "node_ZIB-8FA"
-      },
-      {
-        "from": "node_576-LJG",
-        "to": "node_ZIB-8FA"
-      },
-      {
-        "from": "node_7GD-XF5",
-        "to": "node_ARO-7ZP"
-      },
-      {
-        "from": "node_O33-HUL",
-        "to": "node_H4J-5MJ"
-      },
       {
         "from": "node_ARO-7ZP",
         "to": "node_9P7-RQW"
       },
       {
+        "from": "node_O33-HUL",
+        "to": "node_9P7-RQW"
+      },
+      {
+        "from": "node_7GD-XF5",
+        "to": "node_576-LJG"
+      },
+      {
+        "from": "node_O33-HUL",
+        "to": "node_ZIB-8FA"
+      },
+      {
+        "from": "node_ARO-7ZP",
+        "to": "node_H4J-5MJ"
+      },
+      {
         "from": "node_9P7-RQW",
+        "to": "node_LN3-KBA"
+      },
+      {
+        "from": "node_H4J-5MJ",
         "to": "node_576-LJG"
       }
     ],
@@ -126,16 +126,5 @@
         "last_updated": "2026-06-14T21:26:13.411100"
       }
     ]
-  },
-  {
-    "project_id": "proj_ETG8-HJ-KSEY",
-    "project_name": "Testing",
-    "description": "",
-    "accent_colour": "#ef4444",
-    "collapsed": true,
-    "created_at": "2026-06-27T13:22:47.276520",
-    "last_updated": "2026-06-27T13:22:49.329355",
-    "connections": [],
-    "nodes": []
   }
 ]
