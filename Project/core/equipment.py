@@ -263,7 +263,7 @@ def safe_list_printers(include_status=False):
     if callable(list_fn):
         try:
             return list_printers(include_status)
-        except TypeError:
+        except Exception:
             return _fallback_list_printers(include_status)
     return _fallback_list_printers(include_status)
 
@@ -455,36 +455,48 @@ def printer_status(IP_address, backend_port=7125, frontend_port=None, include_te
     except (TypeError, ValueError):
         backend_port = 7125
 
-    base_url = f"http://{IP_address}:{backend_port}"
-    query_url = f"{base_url}/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed"
+    try:
+        frontend_port = int(frontend_port) if frontend_port else None
+    except (TypeError, ValueError):
+        frontend_port = None
 
-    payload = _try_json(query_url, timeout=1.0)
-    if payload:
-        status = payload.get("result", {}).get("status", {})
-        print_stats = status.get("print_stats", {})
-        sdcard = status.get("virtual_sdcard", {})
-        hotend = _extract_first_temp(status, ("extruder", "extruder0"))
-        bed = _extract_first_temp(status, ("heater_bed", "heater_bed0"))
+    moonraker_query = "/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed"
 
-        if print_stats.get("state") == "printing":
-            progress = sdcard.get("progress")
-            if isinstance(progress, (int, float)):
-                percent = int(round(progress * 100))
+    # Try backend port (direct Moonraker), then frontend port (nginx proxy)
+    ports_to_try = [backend_port]
+    if frontend_port and frontend_port != backend_port:
+        ports_to_try.append(frontend_port)
+
+    for port in ports_to_try:
+        payload = _try_json(f"http://{IP_address}:{port}{moonraker_query}", timeout=2.0)
+        if payload:
+            status = payload.get("result", {}).get("status", {})
+            print_stats = status.get("print_stats", {})
+            sdcard = status.get("virtual_sdcard", {})
+            hotend = _extract_first_temp(status, ("extruder", "extruder0"))
+            bed = _extract_first_temp(status, ("heater_bed", "heater_bed0"))
+
+            if print_stats.get("state") == "printing":
+                progress = sdcard.get("progress")
+                if isinstance(progress, (int, float)):
+                    percent = int(round(progress * 100))
+                    if include_temps:
+                        return "orange", f"{percent}%", hotend, bed
+                    return "orange", f"{percent}%"
                 if include_temps:
-                    return "orange", f"{percent}%", hotend, bed
-                return "orange", f"{percent}%"
+                    return "orange", "Printing", hotend, bed
+                return "orange", "Printing"
+
             if include_temps:
-                return "orange", "Printing", hotend, bed
-            return "orange", "Printing"
+                return "green", "online", hotend, bed
+            return "green", "online"
 
-        if include_temps:
-            return "green", "online", hotend, bed
-        return "green", "online"
-
-    if _port_open(IP_address, backend_port, timeout=1.0):
-        if include_temps:
-            return "green", "online", hotend, bed
-        return "green", "online"
+    # Fall back to TCP port-open check on backend, then frontend
+    for port in ports_to_try:
+        if _port_open(IP_address, port, timeout=2.0):
+            if include_temps:
+                return "green", "online", hotend, bed
+            return "green", "online"
 
     if include_temps:
         return "red", "Offline", hotend, bed

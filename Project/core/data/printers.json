@@ -5,9 +5,7 @@
         "IP_address": "192.168.0.170",
         "frontend_port": 4409,
         "backend_port": 7125,
-        "filament_ids": [
-            "W9I-HN4-BNC"
-        ],
+        "filament_ids": [],
         "model": "Ender 3 V3 KE"
     }
 ]

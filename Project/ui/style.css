@@ -98,7 +98,74 @@ iframe {
     border: none;
 }
 
+.sb-printer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 4px 8px;
+  width: 100%;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.sb-printer-item:hover {
+  background: rgba(0,0,0,0.07);
+}
+
+.sb-printer-icon {
+  width: 26px;
+  height: 26px;
+  color: #3d5b66;
+}
+
+.sb-printer-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.sb-printer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 72px;
+}
+
+.sb-printer-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: #3d5b66;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56px;
+  font-family: 'Inter', Arial, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.sb-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sb-status-dot.printing { background: #f59e0b; }
+.sb-status-dot.idle     { background: #059669; }
+.sb-status-dot.offline  { background: #dc2626; }
+.sb-status-dot.maintenance { background: #0095bb; }
+
+.sidebar > a {
+    padding-bottom: 22px;
+    cursor: pointer;
+}
+
 .settings-icon {
+    width: 36px;
+    height: 36px;
+    color: #3d5b66;
+    display: block;
     transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 

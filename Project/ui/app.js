@@ -1,5 +1,58 @@
 const pill = document.querySelector('.nav-pill');
 
+// --- Sidebar printer list ---
+const PRINTER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="2" y="9" width="20" height="8" rx="2"/>
+  <polyline points="6 9 6 3 18 3 18 9"/>
+  <polyline points="6 17 6 21 18 21 18 17"/>
+  <circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>
+</svg>`;
+
+async function loadSidebarPrinters() {
+    try {
+        const data = await pywebview.api.LIST_PRINTERS(false);
+        renderSidebarPrinters(data || []);
+        (data || []).forEach(p => {
+            checkPrinterStatus(p).then(({ status }) => {
+                const dot = document.getElementById(`sb-dot-${p.printer_id}`);
+                if (dot) dot.className = `sb-status-dot ${status}`;
+            });
+        });
+    } catch {
+        renderSidebarPrinters([]);
+    }
+}
+
+function renderSidebarPrinters(data) {
+    const container = document.getElementById('sidebar-printers');
+    if (!container) return;
+    container.innerHTML = '';
+    data.forEach(p => {
+        const status = p.status || 'offline';
+        const url = p.IP_address && p.frontend_port
+            ? `http://${p.IP_address}:${p.frontend_port}`
+            : null;
+        const item = document.createElement('div');
+        item.className = 'sb-printer-item';
+        item.title = p.name || 'Printer';
+        item.innerHTML = `
+            <div class="sb-printer-icon">${PRINTER_SVG}</div>
+            <div class="sb-printer-row">
+                <span class="sb-status-dot offline" id="sb-dot-${p.printer_id}"></span>
+                <span class="sb-printer-name">${p.name || 'Printer'}</span>
+            </div>`;
+        item.addEventListener('click', () => {
+            const target = url ?? 'equipment.html';
+            navigate(target, document.getElementById('nav-equipment'));
+        });
+        container.appendChild(item);
+    });
+}
+
+window.addEventListener('pywebviewready', loadSidebarPrinters);
+if (window.pywebview) loadSidebarPrinters();
+setInterval(loadSidebarPrinters, 30000);
+
 function navigate(url, el) {
     if (el) {
         const rect = el.getBoundingClientRect();
@@ -13,7 +66,7 @@ function navigate(url, el) {
         return;
     }
 
-    fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(20) })
+    fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(2000) })
         .then(() => document.getElementById('content').src = url)
         .catch(() => {
             document.getElementById('content').src = 'equipment.html';

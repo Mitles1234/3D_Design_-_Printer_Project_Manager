@@ -4,9 +4,9 @@
     "project_name": "Amazing Kup",
     "description": "A Truely Amazing Kup",
     "accent_colour": "#ef4444",
-    "collapsed": true,
+    "collapsed": false,
     "created_at": "2026-06-07T20:03:25.515320",
-    "last_updated": "2026-06-27T15:18:03.561208",
+    "last_updated": "2026-06-27T19:34:00.613646",
     "connections": [
       {
         "from": "node_ARO-7ZP",
@@ -52,10 +52,11 @@
         "date": "2026-06-14",
         "files": [
           "Brake Pad.stp",
-          "Wheel Axel Stand.stp"
+          "Wheel Axel Stand.stp",
+          "Brake Pad.plasticity"
         ],
         "created_at": "2026-06-14T18:54:41.398748",
-        "last_updated": "2026-06-22T10:02:46.804497"
+        "last_updated": "2026-06-27T19:34:00.613646"
       },
       {
         "node_id": "node_7GD-XF5",

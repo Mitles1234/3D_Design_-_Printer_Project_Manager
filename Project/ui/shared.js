@@ -1,3 +1,47 @@
+async function checkPrinterStatus(printer) {
+    const ip = printer.IP_address;
+    const none = { c: null, t: null };
+    if (!ip) return { status: 'offline', label: 'OFFLINE', hotend: none, bed: none };
+
+    const backendPort = Number(printer.backend_port) || 7125;
+    const frontendPort = Number(printer.frontend_port) || null;
+    const ports = frontendPort && frontendPort !== backendPort
+        ? [backendPort, frontendPort]
+        : [backendPort];
+
+    const query = '/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed';
+
+    for (const port of ports) {
+        try {
+            const res = await fetch(`http://${ip}:${port}${query}`, { signal: AbortSignal.timeout(3000) });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const s = data?.result?.status ?? {};
+            const printStats = s.print_stats ?? {};
+            const sdcard = s.virtual_sdcard ?? {};
+            const ext = s.extruder ?? {};
+            const hb = s.heater_bed ?? {};
+            const hotend = { c: ext.temperature ?? null, t: ext.target ?? null };
+            const bed = { c: hb.temperature ?? null, t: hb.target ?? null };
+            if (printStats.state === 'printing') {
+                const p = sdcard.progress;
+                const label = typeof p === 'number' ? `${Math.round(p * 100)}%` : 'PRINTING';
+                return { status: 'printing', label, hotend, bed };
+            }
+            return { status: 'idle', label: 'ONLINE', hotend, bed };
+        } catch {}
+    }
+
+    for (const port of ports) {
+        try {
+            await fetch(`http://${ip}:${port}`, { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
+            return { status: 'idle', label: 'ONLINE', hotend: none, bed: none };
+        } catch {}
+    }
+
+    return { status: 'offline', label: 'OFFLINE', hotend: none, bed: none };
+}
+
 function showToast(message, isError = false) {
     const toast = document.getElementById('app-toast');
     if (!toast) return;

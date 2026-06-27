@@ -33,7 +33,7 @@ async function loadData() {
 
     try {
         const [printerData, filamentData] = await Promise.all([
-            api.LIST_PRINTERS(true),
+            api.LIST_PRINTERS(false),
             api.LIST_FILAMENTS(),
         ]);
 
@@ -41,10 +41,10 @@ async function loadData() {
             id: printer.printer_id,
             name: printer.name || 'Unnamed Printer',
             model: printer.model || 'Unknown model',
-            status: printer.status || 'offline',
-            statusLabel: printer.status_label || 'OFFLINE',
-            hotend: normalizeTemp(printer.status_hotend),
-            bed: normalizeTemp(printer.status_bed),
+            status: 'offline',
+            statusLabel: 'OFFLINE',
+            hotend: { c: null, t: null },
+            bed: { c: null, t: null },
             filament_ids: Array.isArray(printer.filament_ids) ? printer.filament_ids : [],
             IP_address: printer.IP_address || '',
             frontend_port: printer.frontend_port || '',
@@ -70,8 +70,34 @@ async function loadData() {
         });
 
         renderAll();
+
+        printers.forEach(printer => {
+            checkPrinterStatus(printer).then(info => {
+                const p = printers.find(p => p.id === printer.id);
+                if (p) { p.status = info.status; p.statusLabel = info.label; p.hotend = info.hotend; p.bed = info.bed; }
+                updatePrinterCardStatus(printer.id, info);
+            });
+        });
     } catch (error) {
         showToast(error.message || 'Failed to load data', true);
+    }
+}
+
+function updatePrinterCardStatus(printerId, info) {
+    const card = document.getElementById(`card-${printerId}`);
+    if (!card) return;
+    const badge = card.querySelector('.status-badge');
+    if (badge) {
+        badge.className = `status-badge ${info.status}`;
+        badge.innerHTML = info.status === 'printing'
+            ? `<span class="pulse-dot" style="display:inline-block;margin-right:5px"></span>${info.label}`
+            : info.label;
+    }
+    const isOffline = info.status === 'offline';
+    const tempValues = card.querySelectorAll('.temp-value');
+    if (tempValues.length >= 2) {
+        tempValues[0].innerHTML = formatTempHtml(info.hotend, isOffline);
+        tempValues[1].innerHTML = formatTempHtml(info.bed, isOffline);
     }
 }
 
@@ -168,7 +194,7 @@ function renderPrinters() {
         const emptyHint = attached.length === 0 ? `
             <div class="drop-hint">
                 <svg viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-                drag filament here
+                Drag Filament Here
             </div>` : '';
 
         const label = statusLabel(printer.statusLabel || printer.status);
