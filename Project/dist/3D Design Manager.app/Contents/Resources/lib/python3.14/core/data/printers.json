@@ -1,0 +1,11 @@
+[
+    {
+        "printer_id": "97-DX-PL-BJ",
+        "name": "E3V3KE",
+        "IP_address": "192.168.0.170",
+        "frontend_port": 4409,
+        "backend_port": 7125,
+        "filament_ids": [],
+        "model": "Ender 3 V3 KE"
+    }
+]
