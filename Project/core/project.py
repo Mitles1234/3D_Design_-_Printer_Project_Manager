@@ -151,24 +151,31 @@ def _projects_dir() -> Path:
             return p # Returns the custom project directory
     return Path(__file__).resolve().parent / "data" / "projects" # Falls back to the default data/projects directory
 
+def _find_dir(parent: Path, id_prefix: str) -> Path:
+    if parent.is_dir():
+        for entry in parent.iterdir():
+            if entry.is_dir() and (entry.name == id_prefix or entry.name.startswith(id_prefix + " (")):
+                return entry
+    return parent / id_prefix
+
 def _project_dir(project_id: str) -> Path:
     '''
     Returns the path to a specific project's folder given its ID.
     '''
-    return _projects_dir() / project_id # Builds the project folder path from the projects root and the project ID
+    return _find_dir(_projects_dir(), project_id)
 
 def _node_dir(project_id: str, node_id: str) -> Path:
     '''
     Returns the path to a specific node's folder given its project and node IDs.
     '''
-    return _project_dir(project_id) / node_id # Builds the node folder path from the project folder and the node ID
+    return _find_dir(_project_dir(project_id), node_id)
 
 def _init_project_folder(project_id: str, name: str, description: str = "") -> None:
     '''
     Creates the folder for a new project and writes its initial notes.md file with the
     project name and optional description as headings.
     '''
-    folder = _project_dir(project_id) # Gets the path to the project folder
+    folder = _projects_dir() / f"{project_id} ({name})" # Gets the path to the project folder
     folder.mkdir(parents=True, exist_ok=True) # Creates the folder, including any parent directories
     notes = folder / "notes.md" # Builds the path to the notes.md file
     if not notes.exists(): # Only writes the file if it doesn't already exist
@@ -183,7 +190,7 @@ def _init_node_folder(project_id: str, node_id: str, name: str, description: str
     Creates the folder for a new node and writes its initial notes.md file with the node
     name, optional date, and optional description as headings.
     '''
-    folder = _node_dir(project_id, node_id) # Gets the path to the node folder
+    folder = _project_dir(project_id) / f"{node_id} ({name})" # Gets the path to the node folder
     folder.mkdir(parents=True, exist_ok=True) # Creates the folder, including any parent directories
     notes = folder / "notes.md" # Builds the path to the notes.md file
     if not notes.exists(): # Only writes the file if it doesn't already exist
