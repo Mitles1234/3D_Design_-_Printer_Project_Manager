@@ -4,35 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Print Farm Manager</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="shared.css">
-  <link rel="stylesheet" href="equipment.css">
+  <link rel="stylesheet" href="assets/tabler-icons/tabler-icons.min.css"> <!-- Tabler icon font for UI icons -->
+  <link rel="stylesheet" href="shared.css"> <!-- Shared styles used across all pages (variables, modals, toasts) -->
+  <link rel="stylesheet" href="equipment.css"> <!-- Equipment page-specific styles (cards, pool, drag-and-drop) -->
 </head>
 <body>
 
+  <!-- Custom drag ghost element — positioned absolutely and follows the cursor during filament drag operations -->
   <div id="drag-ghost">
-    <div class="chip-dot" id="ghost-dot"></div>
-    <span id="ghost-name"></span>
+    <div class="chip-dot" id="ghost-dot"></div> <!-- Colour dot that matches the dragged filament's colour -->
+    <span id="ghost-name"></span> <!-- Label showing the dragged filament's name -->
   </div>
 
+  <!-- Add/Edit Filament Modal — shared for both add and edit modes -->
   <div class="modal-backdrop" id="filament-modal">
     <div class="modal">
-      <div class="modal-title">ADD FILAMENT</div>
+      <div class="modal-title">ADD FILAMENT</div> <!-- Title updated dynamically by openFilamentModal() -->
+
+      <!-- Name and colour row -->
       <div class="form-group">
         <label class="form-label">Name / Brand</label>
         <div class="name-colour-row">
-          <input type="text" class="form-input" id="f-name" placeholder="e.g. Bambu PLA Basic - Blue">
+          <input type="text" class="form-input" id="f-name" placeholder="e.g. Bambu PLA Basic - Blue"> <!-- Filament name/brand input -->
           <div class="colour-picker-wrap">
-            <button class="colour-swatch" id="f-colour-swatch" type="button" onclick="toggleFilamentColourPicker()">
-              <span class="colour-dot" id="f-colour-dot"></span>
+            <button class="colour-swatch" id="f-colour-swatch" type="button" onclick="toggleFilamentColourPicker()"> <!-- Opens the colour picker popover -->
+              <span class="colour-dot" id="f-colour-dot"></span> <!-- Displays the currently selected filament colour -->
             </button>
-            <div class="colour-popover" id="f-colour-popover"></div>
+            <div class="colour-popover" id="f-colour-popover"></div> <!-- Colour swatch grid, populated by buildColorGrid() -->
           </div>
         </div>
       </div>
+
+      <!-- Material type selector -->
       <div class="form-group">
         <label class="form-label">Material</label>
-        <select class="form-select" id="f-material">
+        <select class="form-select" id="f-material"> <!-- Standard material options; selecting "Add custom..." reveals the custom input below -->
           <option value="PLA">PLA</option>
           <option value="PETG">PETG</option>
           <option value="ABS">ABS</option>
@@ -43,82 +49,116 @@
           <option value="PLA-CF">PLA-CF</option>
           <option value="PETG-CF">PETG-CF</option>
           <option value="__divider__" disabled>------------</option>
-          <option value="__custom__">Add custom...</option>
+          <option value="__custom__">Add custom...</option> <!-- Sentinel value that triggers the custom input field below -->
         </select>
       </div>
+
+      <!-- Custom material input — hidden by default, shown when "Add custom..." is selected -->
       <div class="form-group is-hidden" id="f-material-custom-group">
         <label class="form-label">Custom material</label>
-        <input type="text" class="form-input" id="f-material-custom" placeholder="e.g. PLA+ or PA-CF">
+        <input type="text" class="form-input" id="f-material-custom" placeholder="e.g. PLA+ or PA-CF"> <!-- Accepts any custom material name -->
       </div>
+
+      <!-- Remaining weight input -->
       <div class="form-group">
         <label class="form-label">Remaining weight (g)</label>
-        <input type="number" class="form-input" id="f-weight" placeholder="1000" min="1" max="5000">
+        <input type="number" class="form-input" id="f-weight" placeholder="1000" min="1" max="5000"> <!-- Weight of remaining filament in grams -->
       </div>
+
+      <!-- Modal action buttons -->
       <div class="modal-actions">
-        <button class="button-cancel" type="button" onclick="closeFilamentModal()">Cancel</button>
-        <button class="button-danger" type="button" id="filament-remove" onclick="removeFilamentFromModal()">Remove</button>
-        <button class="button-confirm" type="button" onclick="confirmAddFilament()">Add Spool</button>
+        <button class="button-cancel" type="button" onclick="closeFilamentModal()">Cancel</button> <!-- Closes without saving -->
+        <button class="button-danger" type="button" id="filament-remove" onclick="removeFilamentFromModal()">Remove</button> <!-- Deletes the filament; only shown in edit mode -->
+        <button class="button-confirm" type="button" onclick="confirmAddFilament()">Add Spool</button> <!-- Saves or updates the filament; label updated by openFilamentModal() -->
       </div>
     </div>
   </div>
 
+  <!-- Main page layout -->
   <div class="layout">
+
+    <!-- Page header with stats bar and action buttons -->
     <header class="page-header">
+
+      <!-- Equipment summary statistics -->
       <div class="header-stats">
-        <span><span class="header-stat-label">PRINTERS</span> <strong id="stat-printers">0</strong></span>
-        <span><span class="header-stat-label">SPOOLS</span> <strong id="stat-spools">0</strong></span>
-        <span><span class="header-stat-label">ATTACHED</span> <strong id="stat-attached">0</strong></span>
-        <span><span class="header-stat-label">AVAILABLE</span> <strong id="stat-avail">0</strong></span>
+        <span><span class="header-stat-label">PRINTERS</span> <strong id="stat-printers">0</strong></span> <!-- Total number of registered printers -->
+        <span><span class="header-stat-label">SPOOLS</span> <strong id="stat-spools">0</strong></span> <!-- Total number of filament spools -->
+        <span><span class="header-stat-label">ATTACHED</span> <strong id="stat-attached">0</strong></span> <!-- Number of spools currently assigned to a printer -->
+        <span><span class="header-stat-label">AVAILABLE</span> <strong id="stat-avail">0</strong></span> <!-- Number of spools in the unattached pool -->
       </div>
+
+      <!-- Header action area: search bar and new printer button -->
       <div class="header-actions" id="header-actions">
+
+        <!-- Expandable printer search bar — toggled by the search icon button below -->
         <div class="header-search" id="printer-search-ui">
           <div class="search-field" id="printer-search-field">
             <i class="ti ti-search" aria-hidden="true"></i>
-            <input type="text" id="printer-search" placeholder="Search printers..." oninput="setPrinterSearch(this.value)">
+            <input type="text" id="printer-search" placeholder="Search printers..." oninput="setPrinterSearch(this.value)"> <!-- Filters the printer grid as the user types -->
           </div>
           <button class="icon-button" type="button" id="printer-search-close" title="Close">
-            <i class="ti ti-x" aria-hidden="true"></i>
+            <i class="ti ti-x" aria-hidden="true"></i> <!-- Closes and clears the search bar -->
           </button>
         </div>
-        <div class="header-message" id="header-message"></div>
+
+        <div class="header-message" id="header-message"></div> <!-- Reserved for status messages -->
+
+        <!-- Add new printer button -->
         <button class="button-primary" type="button" id="printer-new" onclick="openPrinterModal()">
           <i class="ti ti-plus" aria-hidden="true"></i>
           New Printer
         </button>
+
+        <!-- Search toggle button — expands the search bar when clicked -->
         <button class="icon-button search-toggle" type="button" id="printer-search-open" title="Search">
           <i class="ti ti-search" aria-hidden="true"></i>
         </button>
       </div>
     </header>
+
+    <!-- Main two-panel content area -->
     <div class="main">
+
+      <!-- Left panel: Printers grid -->
       <div class="printers-panel">
         <div class="panel-heading"><strong>PRINTERS</strong></div>
-        <div class="printers-grid" id="printers-grid"></div>
+        <div class="printers-grid" id="printers-grid"></div> <!-- Dynamically populated with printer cards by renderPrinters() -->
       </div>
+
+      <!-- Right panel: Filament pool with search and filter -->
       <div class="filaments-panel">
         <div class="filaments-panel-header">
           <div class="panel-heading" style="margin-bottom:0;">Filament Inventory</div>
+
+          <!-- Filament text search -->
           <div class="search-wrapper">
             <div class="search-icon">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
-            <input type="text" class="search-box" id="search-input" placeholder="Search spools..." oninput="renderFilaments()">
+            <input type="text" class="search-box" id="search-input" placeholder="Search spools..." oninput="renderFilaments()"> <!-- Filters the filament pool by name or material as the user types -->
           </div>
+
+          <!-- Material filter chips -->
           <div class="filter-row" id="filter-row">
-            <button class="filter-chip active" data-mat="ALL" onclick="setFilter(this,'ALL')">ALL</button>
+            <button class="filter-chip active" data-mat="ALL" onclick="setFilter(this,'ALL')">ALL</button> <!-- Shows all filament types -->
             <button class="filter-chip" data-mat="PLA" onclick="setFilter(this,'PLA')">PLA</button>
             <button class="filter-chip" data-mat="PETG" onclick="setFilter(this,'PETG')">PETG</button>
             <button class="filter-chip" data-mat="ABS" onclick="setFilter(this,'ABS')">ABS</button>
             <button class="filter-chip" data-mat="TPU" onclick="setFilter(this,'TPU')">TPU</button>
           </div>
         </div>
+
+        <!-- Filament pool drop zone — filaments can be dragged from printer cards and dropped here to detach them -->
         <div class="pool-zone" id="pool-zone"
-          ondragover="onPoolDragOver(event)"
-          ondragleave="onPoolDragLeave(event)"
-          ondrop="onPoolDrop(event)">
+          ondragover="onPoolDragOver(event)"   <!-- Highlights the pool when a filament is dragged over it -->
+          ondragleave="onPoolDragLeave(event)" <!-- Removes the highlight when the drag leaves the pool -->
+          ondrop="onPoolDrop(event)">          <!-- Detaches the filament from its printer when dropped -->
         </div>
+
+        <!-- Add filament button at the bottom of the panel -->
         <div class="panel-footer">
-          <button class="add-filament-btn" id="add-filament-btn" onclick="openFilamentModal()">
+          <button class="add-filament-btn" id="add-filament-btn" onclick="openFilamentModal()"> <!-- Opens the add filament modal -->
             <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Filament Spool
           </button>
@@ -127,40 +167,46 @@
     </div>
   </div>
 
+  <!-- Add/Edit Printer Modal -->
   <div class="modal-backdrop" id="printer-modal">
     <div class="modal">
-      <div class="modal-title" id="printer-modal-title">ADD PRINTER</div>
+      <div class="modal-title" id="printer-modal-title">ADD PRINTER</div> <!-- Title updated dynamically by openPrinterModal() -->
+
       <div class="form-group">
         <label class="form-label">Name</label>
-        <input type="text" class="form-input" id="p-name" placeholder="e.g. Bambu Farm 01">
+        <input type="text" class="form-input" id="p-name" placeholder="e.g. Bambu Farm 01"> <!-- Display name for the printer -->
       </div>
       <div class="form-group">
         <label class="form-label">Model</label>
-        <input type="text" class="form-input" id="p-model" placeholder="e.g. Bambu X1 Carbon">
+        <input type="text" class="form-input" id="p-model" placeholder="e.g. Bambu X1 Carbon"> <!-- Printer model description -->
       </div>
       <div class="form-group">
         <label class="form-label">IP Address</label>
-        <input type="text" class="form-input" id="p-ip" placeholder="192.168.0.10">
+        <input type="text" class="form-input" id="p-ip" placeholder="192.168.0.10"> <!-- Network IP address used to reach the printer -->
       </div>
       <div class="form-group">
         <label class="form-label">Frontend Port</label>
-        <input type="number" class="form-input" id="p-frontend" placeholder="4409" min="0">
+        <input type="number" class="form-input" id="p-frontend" placeholder="4409" min="0"> <!-- Port for the web UI (e.g. Mainsail or Fluidd) -->
       </div>
       <div class="form-group">
         <label class="form-label">Backend Port</label>
-        <input type="number" class="form-input" id="p-backend" placeholder="7125" min="0">
+        <input type="number" class="form-input" id="p-backend" placeholder="7125" min="0"> <!-- Port for the Moonraker API; defaults to 7125 -->
       </div>
+
+      <!-- Modal action buttons -->
       <div class="modal-actions">
-        <button class="button-cancel" type="button" onclick="closePrinterModal()">Cancel</button>
-        <button class="button-danger" type="button" id="printer-remove" onclick="removePrinterFromModal()">Remove</button>
-        <button class="button-confirm" type="button" id="printer-confirm" onclick="confirmPrinterModal()">Add Printer</button>
+        <button class="button-cancel" type="button" onclick="closePrinterModal()">Cancel</button> <!-- Closes without saving -->
+        <button class="button-danger" type="button" id="printer-remove" onclick="removePrinterFromModal()">Remove</button> <!-- Deletes the printer; only shown in edit mode -->
+        <button class="button-confirm" type="button" id="printer-confirm" onclick="confirmPrinterModal()">Add Printer</button> <!-- Saves or updates the printer; label updated by openPrinterModal() -->
       </div>
     </div>
   </div>
 
+  <!-- Shared toast notification bar -->
   <div class="toast" id="app-toast"></div>
 
-  <script src="shared.js"></script>
-  <script src="equipment.js"></script>
+  <!-- Scripts loaded at the end of body so the DOM is ready when they execute -->
+  <script src="shared.js"></script> <!-- Shared utilities: checkPrinterStatus, showToast, COLOURS -->
+  <script src="equipment.js"></script> <!-- Equipment page logic: printers, filaments, drag-and-drop, modals -->
 </body>
 </html>

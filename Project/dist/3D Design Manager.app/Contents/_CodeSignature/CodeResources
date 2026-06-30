@@ -42,7 +42,7 @@
 		</data>
 		<key>Resources/lib/python3.14/core/__pycache__/project.cpython-314.pyc</key>
 		<data>
-		CCIHotAhzdQDG9OQSVO4q1qR1Zo=
+		26r9QicNN36pwXkHP0/ejDQL8K0=
 		</data>
 		<key>Resources/lib/python3.14/core/ai.py</key>
 		<data>
@@ -60,21 +60,37 @@
 		<data>
 		qDjed3n4wjTn7WgHHjacamSAKU8=
 		</data>
+		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_0ZV-ZA-49H/notes.md</key>
+		<data>
+		G5OhPvPlpCF4WD69lqnVbbx9Pf4=
+		</data>
+		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_BT3-JM-GLN/Ceramic Coaster.stp</key>
+		<data>
+		Sj656FiPhfkws8bOjJgHP1NSwRc=
+		</data>
 		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_BT3-JM-GLN/notes.md</key>
 		<data>
 		iOfP29vwyCLVYcHbiwRmw8vke4g=
 		</data>
+		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_LKW-OE-71T (Wooden Coaster Challenge: Test Edition!)/notes.md</key>
+		<data>
+		2t1byPCTGT3pv/NE0dudlqxgIj4=
+		</data>
 		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_O4J-71-CHK/notes.md</key>
 		<data>
-		A+lKUmzfNDYa99AdBJOXg93QTlQ=
+		Xa8AECh3xr8Mzv2ZndtyGcKfIh4=
 		</data>
 		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/notes.md</key>
 		<data>
 		9ENMOKrITUuhVq6Ivb1qRa7nPQw=
 		</data>
+		<key>Resources/lib/python3.14/core/data/projects/proj_X560-YI-KVJM/notes.md</key>
+		<data>
+		bUj+P4RPmZD77A+Qd7KEFOkb6TM=
+		</data>
 		<key>Resources/lib/python3.14/core/data/projects/projects.json</key>
 		<data>
-		hojeT4oTVPtQutTLCJxbXzHk7tg=
+		vxVD9DOqIobQqODDc2NL6TnDV4o=
 		</data>
 		<key>Resources/lib/python3.14/core/data/settings.json</key>
 		<data>
@@ -90,7 +106,7 @@
 		</data>
 		<key>Resources/lib/python3.14/core/project.py</key>
 		<data>
-		GA28DdXGcvSp17e9nroWqiik7X0=
+		WmK4kYtYS5RMYRdiT6p7ImOrVzA=
 		</data>
 		<key>Resources/lib/python3.14/ctypes/__init__.py</key>
 		<data>
@@ -3842,7 +3858,7 @@
 		</data>
 		<key>Resources/lib/python314.zip</key>
 		<data>
-		1z3F+9QUXEo/WHrILfKNAa+Bw1k=
+		iwf9/IjPnJdiuoFrsGTyulz2poI=
 		</data>
 		<key>Resources/logo.icns</key>
 		<data>
@@ -3862,11 +3878,11 @@
 		</data>
 		<key>Resources/site.pyc</key>
 		<data>
-		6dFQwuwhn4znRs8yzN6G95rCQ3w=
+		T9UjWXJURTpL8PWvKz46iYUKyTY=
 		</data>
 		<key>Resources/ui/app.js</key>
 		<data>
-		8OmsweYbyQJqKRmKlzE37g/YdEI=
+		DvU6AefdpmU/HYLClamVLTWuCfk=
 		</data>
 		<key>Resources/ui/assets/.DS_Store</key>
 		<data>
@@ -3878,15 +3894,15 @@
 		</data>
 		<key>Resources/ui/equipment.html</key>
 		<data>
-		Zu4pLDUaNGW6IbMp/Al3NF8T/0A=
+		31auoyRtVl9jFsaeJUifm8WbHb8=
 		</data>
 		<key>Resources/ui/equipment.js</key>
 		<data>
-		sAQNxwz2GHkSY2mplKkV9K9T5FA=
+		q2k/+iIxRyltCkbCzA9QmaKpInw=
 		</data>
 		<key>Resources/ui/index.html</key>
 		<data>
-		Nx3XFjzBunFL3AT9UP04Z8cgr/A=
+		0VONC8+eC2HDHdEyCYoqL5nXXAY=
 		</data>
 		<key>Resources/ui/projects.css</key>
 		<data>
@@ -3894,11 +3910,11 @@
 		</data>
 		<key>Resources/ui/projects.html</key>
 		<data>
-		j0gPFnbhMmG1FPsHXZkn1ik95jg=
+		H+CAipwIUN/KY1K8ZrBJe3pmoQA=
 		</data>
 		<key>Resources/ui/projects.js</key>
 		<data>
-		WZ2SY/N1mJq1Z/lhXzOaTmaAfKI=
+		0an5Gm+xGAbLcKmgzURu3q4uqOk=
 		</data>
 		<key>Resources/ui/shared.css</key>
 		<data>
@@ -3906,7 +3922,7 @@
 		</data>
 		<key>Resources/ui/shared.js</key>
 		<data>
-		5LNi77AsrYUH3VKoEphRb3BOfbE=
+		TTDmuuVyYWfPtRtm5X/LRQXYj7g=
 		</data>
 		<key>Resources/ui/style.css</key>
 		<data>
@@ -4059,7 +4075,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			zD2cmvVkrRFft3iV0wzSsWtGpdHVcQyO4ZUxxuBn0MI=
+			0StK60o0LC95n6lMUHXYgaZpKA64jINeeTyofGShIHc=
 			</data>
 		</dict>
 		<key>Resources/lib/python3.14/core/ai.py</key>
@@ -4090,6 +4106,20 @@
 			jtqlOUQGKEBDNCFc5b9Qru1sqjAu2JY+NQalM+ZSl1Y=
 			</data>
 		</dict>
+		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_0ZV-ZA-49H/notes.md</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			6um0Vh/aQlhFmhrRXyRI682EHaLEAMYBtQrak/FKa/4=
+			</data>
+		</dict>
+		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_BT3-JM-GLN/Ceramic Coaster.stp</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			vZ2S47TXzJjoqkULYaljmuKtS96K2caHw87eiA3N2sY=
+			</data>
+		</dict>
 		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_BT3-JM-GLN/notes.md</key>
 		<dict>
 			<key>hash2</key>
@@ -4097,11 +4127,18 @@
 			uOghdzdBTO7TYRIckVw/Yl4WzbfC+aVo80wxKHPi7EQ=
 			</data>
 		</dict>
+		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_LKW-OE-71T (Wooden Coaster Challenge: Test Edition!)/notes.md</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			inmn2cRWQcYzuLooslEjvbhvIkvnMBD4WLoxnUhw9qA=
+			</data>
+		</dict>
 		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/node_O4J-71-CHK/notes.md</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			GmcrUXD+/OH9i2y4wKgjJnqvT48w2TdunoPaN8o+pCY=
+			AcBeTkf+kKsVDU95pBQDZuDrrVOVzHbCDZ3V7iRDgzc=
 			</data>
 		</dict>
 		<key>Resources/lib/python3.14/core/data/projects/proj_7DCW-I2-VFNQ/notes.md</key>
@@ -4111,11 +4148,18 @@
 			GvVreGiCRMe8g9OJ1OSWaXZP7/vJxcCXgEe4x1xMDcc=
 			</data>
 		</dict>
+		<key>Resources/lib/python3.14/core/data/projects/proj_X560-YI-KVJM/notes.md</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			W3LUdLvI9Q37w8qcAzLubCBXwHsJpug8bX6B5ryCUa8=
+			</data>
+		</dict>
 		<key>Resources/lib/python3.14/core/data/projects/projects.json</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			0ux0f885gKk2e9VXh6GIajRk1kcsMwuihyjiz12Er9Y=
+			xack2tz1T9U/FFsOU0yAQE1T7Lu0Igz9q9DhzibGRUw=
 			</data>
 		</dict>
 		<key>Resources/lib/python3.14/core/data/settings.json</key>
@@ -4143,7 +4187,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			5NRg2liNJMe0obD6baCi+T5n9eO9dMLjBhDczO4GBWI=
+			GG7gbjPbF6LK6REbv5uEw1PeDO/45xb08AhJ3h6sdcA=
 			</data>
 		</dict>
 		<key>Resources/lib/python3.14/ctypes/__init__.py</key>
@@ -10714,7 +10758,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			F3grq5O5g/e8qkfIphf3Zsw7ypW5dsCBuFXYNR3luVw=
+			M+NFylmw9BOFA2/P9DFqeTWgRoarfS6cmzRQFDLL62Y=
 			</data>
 		</dict>
 		<key>Resources/logo.icns</key>
@@ -10749,14 +10793,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			47aJsCQH6fSLPSUBjxCFqxp/Lu02ecoiwK6PWKMv4J8=
+			nz1HKiq74sHkI5oMij6aQpWr9mcFuy5n333fUl7/W5g=
 			</data>
 		</dict>
 		<key>Resources/ui/app.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			6Ex1IA4fwMJdiw6qC7KU8V0/ohRWlvBSA9MQuRNq4YI=
+			xxjMRM7GTd/amba6V6T2+ws45l6akHJVzBMv3qM3Opk=
 			</data>
 		</dict>
 		<key>Resources/ui/equipment.css</key>
@@ -10770,21 +10814,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			zkOBiGhNw8L6VzCP7jKazIlwmiOhDkBBOmHiVrtfMAs=
+			ZHedfqD2/50O/Q7llEISO1CxOBwNFb/OAkUiJImJW3o=
 			</data>
 		</dict>
 		<key>Resources/ui/equipment.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			Ye4yQ0hqWjeDMkiKJb+S+b+JU1c0QTlkCV6bDUlKIW0=
+			55FJwdKndxqupwpCrrzxibMOSv3DI2bACejoDO8hUVI=
 			</data>
 		</dict>
 		<key>Resources/ui/index.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			8NNA5sEjlUWgdvEDqfO/lWVebyGTi7KOzZKYbLYm/VA=
+			JMYP98EhACdC56z7gbMVKBEfvX43CnWh6OmjfqsFiqk=
 			</data>
 		</dict>
 		<key>Resources/ui/projects.css</key>
@@ -10798,14 +10842,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			/kguliITLy5KG/xxMjekgej1jyI1hyYp/lpHpH+aRZU=
+			TWqaFaafjGWuKl3k5Z+Ffkniu/Sw0Cda7LWJWDvY/r4=
 			</data>
 		</dict>
 		<key>Resources/ui/projects.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			iQUfcL9FS7HnZ07D5iMme9QB5vnK8o+GNGTxoGzGB5c=
+			bnLUphb6asAYgHx7MSXUGf9ppFErr+HtokEjWB2uPQ4=
 			</data>
 		</dict>
 		<key>Resources/ui/shared.css</key>
@@ -10819,7 +10863,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			2w/BbYPIzk4hXxpTWXG8z+yQ3kh70ZVDR13PFKpaHcA=
+			M120p3g9pPTXchtsa+zXWDa7gMTwiokADBLfhmGaEps=
 			</data>
 		</dict>
 		<key>Resources/ui/style.css</key>
